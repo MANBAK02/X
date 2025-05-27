@@ -1,52 +1,49 @@
-from flask import Flask, request, jsonify, send_from_directory
-import pandas as pd
 import os
+from flask import Flask, request, jsonify, render_template
+import pandas as pd
 
-STATIC_FOLDER = os.path.join(os.path.dirname(__file__), 'frontend')
-print("STATIC_FOLDER PATH:", STATIC_FOLDER)
+# 현재 파일 위치 기준 절대경로 설정
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH = os.path.join(BASE_DIR, 'data', 'S.CSV')
+STATIC_FOLDER = os.path.join(BASE_DIR, 'frontend')
 
-app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path="")
+# Flask 앱 설정
+app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path='')
 
-STUDENT_CSV = os.path.join(os.path.dirname(__file__), 'data', 'S.CSV')
-ANSWER_CSV = os.path.join(os.path.dirname(__file__), 'data', 'A.CSV')
-
+# CSV 데이터 불러오기
 try:
-    students_df = pd.read_csv(STUDENT_CSV)
-    answers_raw = pd.read_csv(ANSWER_CSV, header=None)
-    answers_df = answers_raw.iloc[1:].copy()
-    answers_df.columns = ["회차", "문제번호", "정답", "배점", "문제유형"]
-    correct_answers = answers_df["정답"].astype(int).tolist()
+    df = pd.read_csv(DATA_PATH)
+    print("CSV 로딩 성공:", DATA_PATH)
 except Exception as e:
     print("CSV 로딩 실패:", e)
-    students_df = pd.DataFrame()
-    correct_answers = []
+    df = pd.DataFrame()
 
-@app.route("/")
-def serve_index():
-    return send_from_directory(app.static_folder, "index.html")
+# 메인 페이지
+@app.route('/')
+def index():
+    index_path = os.path.join(STATIC_FOLDER, 'index.html')
+    if os.path.exists(index_path):
+        return app.send_static_file('index.html')
+    else:
+        return "index.html not found", 500
 
-@app.route("/check_id", methods=["POST"])
-def check_id():
-    data = request.get_json()
-    student_id = data.get("id")
+# API 예시 (학생 점수 반환)
+@app.route('/api/score', methods=['GET'])
+def get_score():
+    student = request.args.get('name')
+    if student and not df.empty:
+        result = df[df['name'] == student]
+        if not result.empty:
+            return jsonify(result.to_dict(orient='records'))
+        else:
+            return jsonify({'error': 'Student not found'}), 404
+    return jsonify({'error': 'Invalid request'}), 400
 
-    for _, row in students_df.iterrows():
-        name = row["성명"]
-        phone = str(row["전화번호"]).split("-")[-1]
-        expected_id = name + phone
+# 헬스 체크
+@app.route('/health')
+def health():
+    return 'ok', 200
 
-        if expected_id == student_id:
-            answers = row[list(map(str, range(1, 21)))].tolist()
-            wrongs = [
-                i + 1 for i, a in enumerate(answers)
-                if str(a).strip() and int(a) != correct_answers[i]
-            ]
-            return jsonify({"status": "success", "wrongs": wrongs})
-
-    return jsonify({"status": "error", "message": "학생 ID가 없습니다."})
-
-if __name__ == "__main__":
-    from waitress import serve
-    port = int(os.environ.get("PORT", 5000))
-    serve(app, host="0.0.0.0", port=port)
-
+# 앱 실행 (개발용)
+if __name__ == '__main__':
+    app.run(debug=True)
