@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Student Checker</title>
+</head>
+<body>
+  <h1>학생 ID 확인</h1>
+  <input type="text" id="studentId" placeholder="학생 ID 입력" />
+  <button onclick="checkId()">확인</button>
+  <pre id="result"></pre>
+  <script>
+    async function checkId() {
+      const id = document.getElementById('studentId').value;
+      const res = await fetch('/api/score?id=' + id);
+      const data = await res.json();
+      document.getElementById('result').innerText = JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>

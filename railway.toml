@@ -1,6 +1,2 @@
 [build]
-builder = "NIXPACKS"
-nixpacksVersion = "1.10.0"
-
-[variables]
-PYTHON_VERSION = "3.10"
+pythonVersion = "3.10"
