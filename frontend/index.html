@@ -42,7 +42,8 @@
       }
 
       try {
-        const res = await fetch("https://x-lqc7.onrender.com/check_id", {
+        // 🚀 상대 경로로 설정 (같은 도메인 기준)
+        const res = await fetch("/check_id", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -63,7 +64,7 @@
         }
 
       } catch (error) {
-        resultDiv.innerText = "서버 요청 실패: " + error.message;
+        resultDiv.innerText = "서버 응답 실패: " + error.message;
       }
     }
   </script>
