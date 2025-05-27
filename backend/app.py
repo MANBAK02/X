@@ -46,3 +46,8 @@ def check_id():
             return jsonify({"status": "success", "wrongs": wrongs})
 
     return jsonify({"status": "error", "message": "학생 ID가 없습니다."})
+if __name__ == "__main__":
+    from waitress import serve
+    import os
+    serve(app, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
