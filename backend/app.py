@@ -44,6 +44,11 @@ def check_id():
 
     return jsonify({"status": "error", "message": "학생 ID가 없습니다."})
 
+print("STATIC_FOLDER PATH:", app.static_folder)
+print("DIR EXISTS:", os.path.exists(app.static_folder))
+print("INDEX EXISTS:", os.path.exists(os.path.join(app.static_folder, "index.html")))
+
+
 # ✅ Render 포트 바인딩용
 if __name__ == "__main__":
     from waitress import serve
