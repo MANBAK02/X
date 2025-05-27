@@ -1,10 +1,10 @@
-
-ffrom flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 import os
 
-# 🔧 HTML 경로 절대경로로 지정
-app = Flask(__name__, static_folder=os.path.join(os.getcwd(), "frontend"), static_url_path="")
+# ✅ HTML 경로: app.py 위치 기준으로 repo 루트의 frontend 지정
+frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
+app = Flask(__name__, static_folder=frontend_path, static_url_path="")
 
 STUDENT_CSV = "backend/data/S.CSV"
 ANSWER_CSV = "backend/data/A.CSV"
@@ -44,9 +44,8 @@ def check_id():
 
     return jsonify({"status": "error", "message": "학생 ID가 없습니다."})
 
-# ✅ Render 포트 바인딩용 waitress 실행
+# ✅ Render 포트 바인딩용
 if __name__ == "__main__":
     from waitress import serve
     port = int(os.environ.get("PORT", 5000))
     serve(app, host="0.0.0.0", port=port)
-
