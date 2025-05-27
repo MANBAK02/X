@@ -1,13 +1,14 @@
-
 from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 import os
 
-frontend_path = os.path.join(os.path.dirname(__file__), 'frontend')
-app = Flask(__name__, static_folder=frontend_path, static_url_path="")
+STATIC_FOLDER = os.path.join(os.path.dirname(__file__), 'frontend')
+print("STATIC_FOLDER PATH:", STATIC_FOLDER)
 
-STUDENT_CSV = "backend/data/S.CSV"
-ANSWER_CSV = "backend/data/A.CSV"
+app = Flask(__name__, static_folder=STATIC_FOLDER, static_url_path="")
+
+STUDENT_CSV = os.path.join(os.path.dirname(__file__), 'data', 'S.CSV')
+ANSWER_CSV = os.path.join(os.path.dirname(__file__), 'data', 'A.CSV')
 
 try:
     students_df = pd.read_csv(STUDENT_CSV)
@@ -44,12 +45,8 @@ def check_id():
 
     return jsonify({"status": "error", "message": "학생 ID가 없습니다."})
 
-# 디버깅 로그
-print("STATIC_FOLDER PATH:", app.static_folder)
-print("DIR EXISTS:", os.path.exists(app.static_folder))
-print("INDEX EXISTS:", os.path.exists(os.path.join(app.static_folder, "index.html")))
-
 if __name__ == "__main__":
     from waitress import serve
     port = int(os.environ.get("PORT", 5000))
     serve(app, host="0.0.0.0", port=port)
+
