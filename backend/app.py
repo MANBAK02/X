@@ -3,7 +3,8 @@ from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 import os
 
-app = Flask(__name__, static_folder="frontend", static_url_path="")
+frontend_path = os.path.join(os.path.dirname(__file__), 'frontend')
+app = Flask(__name__, static_folder=frontend_path, static_url_path="")
 
 STUDENT_CSV = "backend/data/S.CSV"
 ANSWER_CSV = "backend/data/A.CSV"
@@ -42,6 +43,11 @@ def check_id():
             return jsonify({"status": "success", "wrongs": wrongs})
 
     return jsonify({"status": "error", "message": "학생 ID가 없습니다."})
+
+# 디버깅 로그
+print("STATIC_FOLDER PATH:", app.static_folder)
+print("DIR EXISTS:", os.path.exists(app.static_folder))
+print("INDEX EXISTS:", os.path.exists(os.path.join(app.static_folder, "index.html")))
 
 if __name__ == "__main__":
     from waitress import serve
