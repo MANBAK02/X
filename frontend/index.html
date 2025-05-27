@@ -1,1 +1,49 @@
-<html><body><h1>GAIA 모의고사 시스템</h1></body></html>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GAIA 학생 피드백 검색</title>
+</head>
+<body>
+  <h1>학생 피드백 검색</h1>
+  
+  <label for="studentId">학생 ID 입력:</label>
+  <input type="text" id="studentId" placeholder="예: 12345" />
+  <button onclick="searchFeedback()">검색</button>
+
+  <div id="result" style="margin-top: 20px;"></div>
+
+  <script>
+    async function searchFeedback() {
+      const student_id = document.getElementById("studentId").value.trim();
+      const resultDiv = document.getElementById("result");
+      resultDiv.innerText = "검색 중...";
+
+      if (!student_id) {
+        resultDiv.innerText = "학생 ID를 입력해주세요.";
+        return;
+      }
+
+      try {
+        const res = await fetch("https://x-lqc7.onrender.com/search", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ student_id }),
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          resultDiv.innerText = data.feedback || "피드백이 없습니다.";
+        } else {
+          resultDiv.innerText = data.error || "오류 발생.";
+        }
+      } catch (error) {
+        resultDiv.innerText = "서버 요청 실패: " + error.message;
+      }
+    }
+  </script>
+</body>
+</html>
