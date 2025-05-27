@@ -1,35 +1,17 @@
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GAIA 학생 피드백 검색</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      max-width: 600px;
-      margin: 40px auto;
-      padding: 20px;
-    }
-    label, input, button {
-      display: block;
-      margin-top: 15px;
-    }
-    #result {
-      margin-top: 20px;
-      font-weight: bold;
-    }
-  </style>
 </head>
 <body>
   <h1>📘 학생 피드백 검색</h1>
-
   <label for="studentId">학생 ID 입력:</label>
   <input type="text" id="studentId" placeholder="예: 홍길동1234" />
   <button onclick="searchFeedback()">검색</button>
-
   <div id="result"></div>
-
   <script>
     async function searchFeedback() {
       const student_id = document.getElementById("studentId").value.trim();
@@ -42,7 +24,6 @@
       }
 
       try {
-        // 🚀 상대 경로로 설정 (같은 도메인 기준)
         const res = await fetch("/check_id", {
           method: "POST",
           headers: {

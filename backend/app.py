@@ -1,3 +1,4 @@
+
 from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 import os
@@ -42,8 +43,6 @@ def check_id():
 
     return jsonify({"status": "error", "message": "학생 ID가 없습니다."})
 
-
-# ✅ Render 포트 바인딩 코드 반드시 필요
 if __name__ == "__main__":
     from waitress import serve
     port = int(os.environ.get("PORT", 5000))
