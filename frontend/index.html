@@ -4,15 +4,31 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GAIA 학생 피드백 검색</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+    }
+    label, input, button {
+      display: block;
+      margin-top: 15px;
+    }
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <h1>학생 피드백 검색</h1>
-  
+  <h1>📘 학생 피드백 검색</h1>
+
   <label for="studentId">학생 ID 입력:</label>
-  <input type="text" id="studentId" placeholder="예: 12345" />
+  <input type="text" id="studentId" placeholder="예: 홍길동1234" />
   <button onclick="searchFeedback()">검색</button>
 
-  <div id="result" style="margin-top: 20px;"></div>
+  <div id="result"></div>
 
   <script>
     async function searchFeedback() {
@@ -26,20 +42,26 @@
       }
 
       try {
-        const res = await fetch("https://x-lqc7.onrender.com/search", {
+        const res = await fetch("https://x-lqc7.onrender.com/check_id", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ student_id }),
+          body: JSON.stringify({ id: student_id }),
         });
 
         const data = await res.json();
-        if (res.ok) {
-          resultDiv.innerText = data.feedback || "피드백이 없습니다.";
+
+        if (data.status === "success") {
+          if (data.wrongs.length === 0) {
+            resultDiv.innerText = "모든 문제를 맞았습니다! 🎉";
+          } else {
+            resultDiv.innerText = `틀린 문제 번호: ${data.wrongs.join(", ")}`;
+          }
         } else {
-          resultDiv.innerText = data.error || "오류 발생.";
+          resultDiv.innerText = data.message || "학생 정보를 찾을 수 없습니다.";
         }
+
       } catch (error) {
         resultDiv.innerText = "서버 요청 실패: " + error.message;
       }
