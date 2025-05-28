@@ -1,22 +1,68 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
   <meta charset="utf-8">
-  <title>모의고사 로그인 & 회차 선택</title>
+  <!-- ① 모바일 퍼스트 뷰포트 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>모의고사 로그인</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 1rem;
+      font-family: sans-serif;
+      background: #f9f9f9;
+    }
+    .container {
+      max-width: 400px;
+      margin: 0 auto;
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 1.5rem;
+      text-align: center;
+    }
+    input, select, button {
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      margin: 0.5rem 0;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background: #007bff;
+      color: #fff;
+      border: none;
+    }
+    p.error {
+      color: #d00;
+      font-size: 0.9rem;
+      margin: 0.25rem 0 0;
+    }
+  </style>
 </head>
 <body>
-  <h1>로그인</h1>
-  <div id="loginSection">
-    <input type="text" id="loginId" placeholder="이름+전화번호 끝4자리">
-    <button id="loginBtn">로그인</button>
-    <p id="loginMsg" style="color:red;"></p>
-  </div>
+  <div class="container">
+    <h1>로그인</h1>
 
-  <div id="examSection" style="display:none;">
-    <h2>회차 선택</h2>
-    <select id="examSelect"></select>
-    <button id="examBtn">선택</button>
-    <p id="examMsg" style="color:red;"></p>
+    <div id="loginSection">
+      <input type="text" id="loginId" placeholder="리클래스 ID 입력">
+      <button id="loginBtn">로그인</button>
+      <p id="loginMsg" class="error"></p>
+    </div>
+
+    <div id="examSection" style="display:none;">
+      <h2>회차 선택</h2>
+      <select id="examSelect"></select>
+      <button id="examBtn">선택</button>
+      <p id="examMsg" class="error"></p>
+    </div>
   </div>
 
   <script>
@@ -24,7 +70,10 @@
 
     document.getElementById('loginBtn').onclick = () => {
       const id = document.getElementById('loginId').value.trim();
-      if (!id) return document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
+      if (!id) {
+        document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
+        return;
+      }
       fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
         .then(res => res.json().then(j => ({ok: res.ok, ...j})))
         .then(data => {
@@ -38,7 +87,7 @@
           }
         })
         .catch(() => {
-          document.getElementById('loginMsg').textContent = '인증 중 오류';
+          document.getElementById('loginMsg').textContent = '인증 중 오류가 발생했습니다';
         });
     };
 
@@ -65,9 +114,9 @@
         .then(res => res.json().then(j => ({ok: res.ok, ...j})))
         .then(data => {
           if (data.registered) {
-            alert(`모의고사 "${exam}" 응시 정보 확인됨. 문제풀이 서비스로 이동합니다.`);
+            alert(`"${exam}" 응시 정보 확인됨. 문제풀이 서비스로 이동합니다.`);
           } else {
-            document.getElementById('examMsg').textContent = '해당 모의고사의 응시 정보가 없습니다.';
+            document.getElementById('examMsg').textContent = data.error;
           }
         })
         .catch(() => {
