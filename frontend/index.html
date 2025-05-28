@@ -1,21 +1,43 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
-  <title>Student Checker</title>
+  <meta charset="utf-8">
+  <title>모의고사 성적 조회</title>
 </head>
 <body>
-  <h1>학생 ID 확인</h1>
-  <input type="text" id="studentId" placeholder="학생 ID 입력" />
-  <button onclick="checkId()">확인</button>
+  <h1>학생 성적 조회</h1>
+
+  <label for="exam">모의고사:</label>
+  <select id="exam">
+    <!-- 실제 exam 폴더명(exam1, exam2 등)에 맞게 옵션을 추가 -->
+    <option value="exam1">exam1</option>
+    <option value="exam2">exam2</option>
+  </select>
+  <br>
+
+  <label for="studentId">로그인 ID:</label>
+  <input type="text" id="studentId" placeholder="이름+전화번호 끝4자리">
+  <button id="lookup">조회</button>
+
   <pre id="result"></pre>
+
   <script>
-    async function checkId() {
-      const id = document.getElementById('studentId').value;
-      const res = await fetch('/api/score?id=' + id);
-      const data = await res.json();
-      document.getElementById('result').innerText = JSON.stringify(data, null, 2);
-    }
+    document.getElementById('lookup').onclick = () => {
+      const exam = document.getElementById('exam').value;
+      const id   = document.getElementById('studentId').value.trim();
+      if (!id) return alert('로그인 ID를 입력하세요');
+      fetch(`/api/score?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(id)}`)
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById('result').textContent =
+            data.error ? data.error
+                       : JSON.stringify(data, null, 2);
+        })
+        .catch(err => {
+          console.error(err);
+          alert('조회 중 오류 발생');
+        });
+    };
   </script>
 </body>
 </html>
