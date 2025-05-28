@@ -26,10 +26,7 @@
       const id = document.getElementById('loginId').value.trim();
       if (!id) return document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
       fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
-        .then(res => {
-          if (res.ok) return res.json();
-          throw new Error('인증 실패');
-        })
+        .then(res => res.json().then(j => ({ok: res.ok, ...j})))
         .then(data => {
           if (data.authenticated) {
             currentId = id;
@@ -41,7 +38,7 @@
           }
         })
         .catch(() => {
-          document.getElementById('loginMsg').textContent = '인증 중 오류가 발생했습니다';
+          document.getElementById('loginMsg').textContent = '인증 중 오류';
         });
     };
 
@@ -54,7 +51,7 @@
           exams.forEach(e => {
             const opt = document.createElement('option');
             opt.value = e; opt.text = e;
-            sel.add(opt);
+            sel.appendChild(opt);
           });
         })
         .catch(() => {
@@ -65,18 +62,16 @@
     document.getElementById('examBtn').onclick = () => {
       const exam = document.getElementById('examSelect').value;
       fetch(`/api/check_exam?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`)
-        .then(res => {
-          if (res.ok) return res.json();
-          return res.json().then(err => { throw new Error(err.error); });
-        })
+        .then(res => res.json().then(j => ({ok: res.ok, ...j})))
         .then(data => {
           if (data.registered) {
-            // TODO: 문제풀이 서비스로 이동
             alert(`모의고사 "${exam}" 응시 정보 확인됨. 문제풀이 서비스로 이동합니다.`);
+          } else {
+            document.getElementById('examMsg').textContent = '해당 모의고사의 응시 정보가 없습니다.';
           }
         })
-        .catch(err => {
-          document.getElementById('examMsg').textContent = err.message;
+        .catch(() => {
+          document.getElementById('examMsg').textContent = '응시 여부 확인 중 오류';
         });
     };
   </script>
