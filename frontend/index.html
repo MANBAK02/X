@@ -2,40 +2,81 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>모의고사 성적 조회</title>
+  <title>모의고사 로그인 & 회차 선택</title>
 </head>
 <body>
-  <h1>학생 성적 조회</h1>
+  <h1>로그인</h1>
+  <div id="loginSection">
+    <input type="text" id="loginId" placeholder="이름+전화번호 끝4자리">
+    <button id="loginBtn">로그인</button>
+    <p id="loginMsg" style="color:red;"></p>
+  </div>
 
-  <label for="exam">모의고사:</label>
-  <select id="exam">
-    <!-- 실제 exam 폴더명(exam1, exam2 등)에 맞게 옵션을 추가 -->
-    <option value="exam1">exam1</option>
-    <option value="exam2">exam2</option>
-  </select>
-  <br>
-
-  <label for="studentId">로그인 ID:</label>
-  <input type="text" id="studentId" placeholder="이름+전화번호 끝4자리">
-  <button id="lookup">조회</button>
-
-  <pre id="result"></pre>
+  <div id="examSection" style="display:none;">
+    <h2>회차 선택</h2>
+    <select id="examSelect"></select>
+    <button id="examBtn">선택</button>
+    <p id="examMsg" style="color:red;"></p>
+  </div>
 
   <script>
-    document.getElementById('lookup').onclick = () => {
-      const exam = document.getElementById('exam').value;
-      const id   = document.getElementById('studentId').value.trim();
-      if (!id) return alert('로그인 ID를 입력하세요');
-      fetch(`/api/score?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(id)}`)
-        .then(res => res.json())
+    let currentId = '';
+
+    document.getElementById('loginBtn').onclick = () => {
+      const id = document.getElementById('loginId').value.trim();
+      if (!id) return document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
+      fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
+        .then(res => {
+          if (res.ok) return res.json();
+          throw new Error('인증 실패');
+        })
         .then(data => {
-          document.getElementById('result').textContent =
-            data.error ? data.error
-                       : JSON.stringify(data, null, 2);
+          if (data.authenticated) {
+            currentId = id;
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('examSection').style.display = 'block';
+            loadExams();
+          } else {
+            document.getElementById('loginMsg').textContent = '인증되지 않은 ID입니다';
+          }
+        })
+        .catch(() => {
+          document.getElementById('loginMsg').textContent = '인증 중 오류가 발생했습니다';
+        });
+    };
+
+    function loadExams() {
+      fetch('/api/exams')
+        .then(res => res.json())
+        .then(exams => {
+          const sel = document.getElementById('examSelect');
+          sel.innerHTML = '';
+          exams.forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e; opt.text = e;
+            sel.add(opt);
+          });
+        })
+        .catch(() => {
+          document.getElementById('examMsg').textContent = '회차 목록 로드 실패';
+        });
+    }
+
+    document.getElementById('examBtn').onclick = () => {
+      const exam = document.getElementById('examSelect').value;
+      fetch(`/api/check_exam?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`)
+        .then(res => {
+          if (res.ok) return res.json();
+          return res.json().then(err => { throw new Error(err.error); });
+        })
+        .then(data => {
+          if (data.registered) {
+            // TODO: 문제풀이 서비스로 이동
+            alert(`모의고사 "${exam}" 응시 정보 확인됨. 문제풀이 서비스로 이동합니다.`);
+          }
         })
         .catch(err => {
-          console.error(err);
-          alert('조회 중 오류 발생');
+          document.getElementById('examMsg').textContent = err.message;
         });
     };
   </script>

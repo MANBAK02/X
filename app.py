@@ -3,11 +3,11 @@ from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 
-# ─── 설정 ───────────────────────────────────
+# ─── 기본 경로 설정 ─────────────────────────────────
 BASE_DIR          = Path(__file__).parent.resolve()
-STUDENT_LIST_PATH = BASE_DIR / 'backend' / 'data' / 'student_list.csv'
-EXAMS_DATA_DIR    = BASE_DIR / 'backend' / 'data' / 'S'
-FRONTEND_DIR      = BASE_DIR / 'backend' / 'frontend'
+DATA_DIR          = BASE_DIR / 'data'
+STUDENT_LIST_PATH = DATA_DIR / 'student_list.csv'
+FRONTEND_DIR      = BASE_DIR / 'frontend'
 
 app = Flask(
     __name__,
@@ -15,61 +15,65 @@ app = Flask(
     static_url_path='/'
 )
 
-# ─── 인증용 학생 목록 로드 ────────────────────
-student_list_df = pd.read_csv(STUDENT_LIST_PATH, dtype=str)  
-# student_list.csv 에는 최소 'reclass_id' 컬럼이 있어야 합니다.
+# ─── 1) 인증용 학생 목록 로드 ───────────────────────
+student_list_df = pd.read_csv(STUDENT_LIST_PATH, dtype=str)
+valid_ids = set(student_list_df['reclass_id'])
 
-def authenticate(reclass_id: str) -> bool:
-    """ student_list.csv에 reclass_id가 있는지 확인 """
-    return reclass_id in set(student_list_df['reclass_id'])
-
-# ─── 모의고사 CSV 일괄 로드 & reclass_id 생성 ─────
-def load_all_exams(s_dir: Path):
-    exam_data: dict[str, list[pd.DataFrame]] = {}
-    for csv_path in s_dir.rglob('*.csv'):
-        exam_name = csv_path.parent.name       # e.g. “exam1”
-        df = pd.read_csv(csv_path, dtype=str)  # 문자열로 읽기
+# ─── 2) 시험 회차(폴더) 목록 및 S/CSV 로드 ────────────
+all_exams: dict[str, pd.DataFrame] = {}
+for exam_dir in DATA_DIR.iterdir():
+    if not exam_dir.is_dir() or exam_dir.name == 'student_list.csv':
+        continue
+    # exam_dir: data/<exam_name>/
+    # S 폴더 안의 CSV를 합쳐서 DataFrame 생성
+    frames = []
+    for csv_path in (exam_dir / 'S').glob('*.csv'):
+        df = pd.read_csv(csv_path, dtype=str)
         df['phone4']     = df['전화번호'].str[-4:]
         df['reclass_id'] = df['이름'] + df['phone4']
-        exam_data.setdefault(exam_name, []).append(df)
-    return {
-        exam: pd.concat(dfs, ignore_index=True)
-        for exam, dfs in exam_data.items()
-    }
+        frames.append(df)
+    all_exams[exam_dir.name] = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
-all_exams_df = load_all_exams(EXAMS_DATA_DIR)
-
-# ─── 라우팅 ───────────────────────────────────
+# ─── 3) 라우트 정의 ─────────────────────────────────
 @app.route('/')
 def index():
     return send_from_directory(str(FRONTEND_DIR), 'index.html')
 
-@app.route('/api/score')
-def get_score():
-    exam       = request.args.get('exam', '').strip()
-    reclass_id = request.args.get('id', '').strip()
+@app.route('/api/authenticate')
+def api_authenticate():
+    rid = request.args.get('id', '').strip()
+    if not rid:
+        return jsonify({ 'error': 'Missing id parameter' }), 400
+    if rid in valid_ids:
+        return jsonify({ 'authenticated': True })
+    else:
+        return jsonify({ 'authenticated': False }), 401
 
-    # 1) 파라미터 검사
-    if not exam or not reclass_id:
-        return jsonify({'error': 'Missing exam or id parameter'}), 400
+@app.route('/api/exams')
+def api_exams():
+    """data/ 폴더 아래의 디렉터리 이름을 회차 목록으로 반환"""
+    return jsonify(list(all_exams.keys()))
 
-    # 2) 로그인 인증
-    if not authenticate(reclass_id):
-        return jsonify({'error': 'Unauthorized'}), 401
+@app.route('/api/check_exam')
+def api_check_exam():
+    exam = request.args.get('exam', '').strip()
+    rid  = request.args.get('id', '').strip()
+    if not exam or not rid:
+        return jsonify({ 'error': 'Missing parameters' }), 400
+    if exam not in all_exams:
+        return jsonify({ 'error': 'Unknown exam' }), 404
 
-    # 3) 존재하는 exam인지 확인
-    if exam not in all_exams_df:
-        return jsonify({'error': 'Unknown exam'}), 404
+    df = all_exams[exam]
+    if rid in set(df['reclass_id']):
+        # 나중에 문제풀이 서비스로 리다이렉트 or 토큰 반환 등
+        return jsonify({ 'registered': True })
+    else:
+        return jsonify({ 'registered': False, 'error': '해당 모의고사의 응시 정보가 없습니다.' }), 404
 
-    # 4) 점수 조회
-    df  = all_exams_df[exam]
-    rec = df[df['reclass_id'] == reclass_id]
-    if rec.empty:
-        return jsonify({'error': 'Not found'}), 404
+# 문제 이미지 등은 추후 구현
+# @app.route('/problems/…')
 
-    return jsonify(rec.iloc[0].to_dict())
-
-# ─── 실행 ─────────────────────────────────────
+# ─── 4) 앱 실행 ───────────────────────────────────
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
