@@ -2,9 +2,9 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <!-- ① 모바일 퍼스트 뷰포트 -->
+  <!-- 모바일 퍼스트 뷰포트 -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>모의고사 로그인</title>
+  <title>GAIA 모의고사 복습 사이트</title>
   <style>
     body {
       margin: 0;
@@ -20,10 +20,26 @@
       border-radius: 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
+    /* 제목 스타일: 한 줄로 꽉 채우기 */
     h1 {
-      margin-top: 0;
-      font-size: 1.5rem;
+      margin: 0 0 0.5rem;
+      font-size: 1.25rem;
       text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    /* 지구본 이미지 회전 애니메이션 */
+    img.rotating {
+      display: block;
+      width: 60%;
+      max-width: 200px;
+      margin: 0.5rem auto 1rem;
+      animation: spin 4s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
     }
     input, select, button {
       display: block;
@@ -37,7 +53,7 @@
     }
     button {
       background: #007bff;
-      color: #fff;
+      color: white;
       border: none;
     }
     p.error {
@@ -49,14 +65,19 @@
 </head>
 <body>
   <div class="container">
-    <h1>로그인</h1>
+    <!-- ① 제목 변경 -->
+    <h1>GAIA 모의고사 복습 사이트</h1>
+    <!-- ② 지구본 움짤: frontend/globe.gif -->
+    <img src="globe.gif" alt="Globe" class="rotating">
 
+    <!-- 로그인 섹션 -->
     <div id="loginSection">
       <input type="text" id="loginId" placeholder="리클래스 ID 입력">
       <button id="loginBtn">로그인</button>
       <p id="loginMsg" class="error"></p>
     </div>
 
+    <!-- 회차 선택 섹션 -->
     <div id="examSection" style="display:none;">
       <h2>회차 선택</h2>
       <select id="examSelect"></select>
@@ -68,6 +89,7 @@
   <script>
     let currentId = '';
 
+    // 1) 로그인
     document.getElementById('loginBtn').onclick = () => {
       const id = document.getElementById('loginId').value.trim();
       if (!id) {
@@ -75,7 +97,7 @@
         return;
       }
       fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
-        .then(res => res.json().then(j => ({ok: res.ok, ...j})))
+        .then(res => res.json().then(j=>({ok:res.ok,...j})))
         .then(data => {
           if (data.authenticated) {
             currentId = id;
@@ -91,6 +113,7 @@
         });
     };
 
+    // 2) 시험 목록 로드
     function loadExams() {
       fetch('/api/exams')
         .then(res => res.json())
@@ -99,7 +122,7 @@
           sel.innerHTML = '';
           exams.forEach(e => {
             const opt = document.createElement('option');
-            opt.value = e; opt.text = e;
+            opt.value = e; opt.textContent = e;
             sel.appendChild(opt);
           });
         })
@@ -108,10 +131,11 @@
         });
     }
 
+    // 3) 응시 여부 체크
     document.getElementById('examBtn').onclick = () => {
       const exam = document.getElementById('examSelect').value;
       fetch(`/api/check_exam?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`)
-        .then(res => res.json().then(j => ({ok: res.ok, ...j})))
+        .then(res => res.json().then(j=>({ok:res.ok,...j})))
         .then(data => {
           if (data.registered) {
             alert(`"${exam}" 응시 정보 확인됨. 문제풀이 서비스로 이동합니다.`);
