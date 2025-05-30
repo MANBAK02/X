@@ -20,10 +20,10 @@
       border-radius: 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
-    /* 제목 스타일: 한 줄로 꽉 채우기, 여백 축소 */
+    /* 제목 스타일: 한 줄로 꽉 채우기, 크기 확대 */
     h1 {
       margin: 0 0 0.25rem;
-      font-size: 1.25rem;
+      font-size: 1.5rem;
       text-align: center;
       white-space: nowrap;
       overflow: hidden;
@@ -44,12 +44,12 @@
       color: white;
       border: none;
     }
-    /* GIF 이미지: 회전 삭제, 로그인 버튼 밑으로 이동 */
+    /* GIF 이미지: 회전 삭제, 제목과 입력 사이로 이동 */
     img.static {
       display: block;
       width: 40%;
       max-width: 150px;
-      margin: 1rem auto 0;
+      margin: 0.75rem auto;
     }
     p.error {
       color: #d00;
@@ -60,16 +60,16 @@
 </head>
 <body>
   <div class="container">
-    <!-- 제목과 로그인 입력 사이 여백 축소 완료 -->
+    <!-- 제목 -->
     <h1>GAIA 모의고사 복습 사이트</h1>
+    <!-- 제목과 로그인 입력 사이에 GIF 이동 -->
+    <img src="globe.gif" alt="Globe" class="static">
 
     <!-- 로그인 섹션 -->
     <div id="loginSection">
       <input type="text" id="loginId" placeholder="리클래스 ID 입력">
       <button id="loginBtn">로그인</button>
       <p id="loginMsg" class="error"></p>
-      <!-- 로그인 버튼 밑에 정지된 GIF 추가 -->
-      <img src="globe.gif" alt="Globe" class="static">
     </div>
 
     <!-- 회차 선택 섹션 -->
@@ -145,6 +145,7 @@
   </script>
 </body>
 </html>
+
 
 
 
