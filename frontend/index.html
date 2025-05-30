@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <!-- ① 모바일 퍼스트 뷰포트 -->
+  <!-- 모바일 퍼스트 뷰포트 -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GAIA 모의고사 복습 사이트</title>
   <style>
@@ -20,26 +20,14 @@
       border-radius: 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
-    /* 제목 스타일: 한 줄로 꽉 채우기 */
+    /* 제목 스타일: 한 줄로 꽉 채우기, 여백 축소 */
     h1 {
-      margin: 0 0 0.5rem;
+      margin: 0 0 0.25rem;
       font-size: 1.25rem;
       text-align: center;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-    /* 지구본 이미지 회전 애니메이션 및 크기 조정 */
-    img.rotating {
-      display: block;
-      width: 40%;
-      max-width: 150px;
-      margin: 0.5rem auto 2rem;
-      animation: spin 8s linear infinite;
-    }
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
     }
     input, select, button {
       display: block;
@@ -56,6 +44,13 @@
       color: white;
       border: none;
     }
+    /* GIF 이미지: 회전 삭제, 로그인 버튼 밑으로 이동 */
+    img.static {
+      display: block;
+      width: 40%;
+      max-width: 150px;
+      margin: 1rem auto 0;
+    }
     p.error {
       color: #d00;
       font-size: 0.9rem;
@@ -65,16 +60,16 @@
 </head>
 <body>
   <div class="container">
-    <!-- ① 제목 변경 -->
+    <!-- 제목과 로그인 입력 사이 여백 축소 완료 -->
     <h1>GAIA 모의고사 복습 사이트</h1>
-    <!-- ② 지구본 움짤: frontend/globe.gif -->
-    <img src="globe.gif" alt="Globe" class="rotating">
 
     <!-- 로그인 섹션 -->
     <div id="loginSection">
       <input type="text" id="loginId" placeholder="리클래스 ID 입력">
       <button id="loginBtn">로그인</button>
       <p id="loginMsg" class="error"></p>
+      <!-- 로그인 버튼 밑에 정지된 GIF 추가 -->
+      <img src="globe.gif" alt="Globe" class="static">
     </div>
 
     <!-- 회차 선택 섹션 -->
@@ -150,6 +145,7 @@
   </script>
 </body>
 </html>
+
 
 
 	
