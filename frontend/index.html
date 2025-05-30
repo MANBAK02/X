@@ -1,64 +1,31 @@
-<!-- frontend/index.html -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <!-- 모바일 퍼스트 뷰포트 -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GAIA 모의고사 복습 사이트</title>
   <style>
-    body {
-      margin: 0; padding: 1rem;
-      font-family: sans-serif;
-      background: #f9f9f9;
-    }
+    body { margin:0; padding:1rem; font-family:sans-serif; background:#f9f9f9; }
     .container {
-      max-width: 400px;
-      margin: 0 auto;
-      background: white;
-      padding: 1rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      max-width:400px; margin:0 auto; background:white;
+      padding:1rem; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1);
     }
     h1 {
-      margin: 0 0 0.25rem;
-      font-size: 1.5rem;
-      text-align: center;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      margin:0 0 0.25rem; font-size:1.5rem; text-align:center;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
-    /* GIF 이미지: 제목과 로그인 입력 사이로 이동 */
     img.static {
-      display: block;
-      width: 40%;
-      max-width: 150px;
-      margin: 0.75rem auto 1.5rem;
+      display:block; width:40%; max-width:150px;
+      margin:0.75rem auto 1.5rem;
     }
     input, select, button {
-      display: block;
-      width: 100%;
-      padding: 0.75rem;
-      font-size: 1rem;
-      margin: 0.5rem 0;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      display:block; width:100%; padding:0.75rem;
+      font-size:1rem; margin:0.5rem 0; box-sizing:border-box;
+      border:1px solid #ccc; border-radius:4px;
     }
-    button {
-      background: #007bff;
-      color: white;
-      border: none;
-    }
-    p.error {
-      color: #d00;
-      font-size: 0.9rem;
-      margin: 0.25rem 0 0;
-    }
-    /* 옵션 버튼 섹션 */
-    #optionSection button {
-      margin: 0.5rem 0;
-    }
+    button { background:#007bff; color:white; border:none; }
+    p.error { color:#d00; font-size:0.9rem; margin:0.25rem 0 0; }
+    #optionSection button { margin:0.5rem 0; }
   </style>
 </head>
 <body>
@@ -66,14 +33,12 @@
     <h1>GAIA 모의고사 복습 사이트</h1>
     <img src="globe.gif" alt="Globe" class="static">
 
-    <!-- 로그인 섹션 -->
     <div id="loginSection">
       <input type="text" id="loginId" placeholder="리클래스 ID 입력">
       <button id="loginBtn">로그인</button>
       <p id="loginMsg" class="error"></p>
     </div>
 
-    <!-- 회차 선택 섹션 -->
     <div id="examSection" style="display:none;">
       <h2>회차 선택</h2>
       <select id="examSelect"></select>
@@ -81,7 +46,6 @@
       <p id="examMsg" class="error"></p>
     </div>
 
-    <!-- 1·2·3번 옵션 버튼 -->
     <div id="optionSection" style="display:none; text-align:center;">
       <button id="reportBtn">1. 내 성적표 확인</button>
       <button id="reviewBtn">2. 틀린 문제 다시 풀기</button>
@@ -92,81 +56,55 @@
   <script>
     let currentId = '';
 
-    // 1) 로그인
     document.getElementById('loginBtn').onclick = () => {
       const id = document.getElementById('loginId').value.trim();
-      if (!id) {
-        document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
-        return;
-      }
+      if (!id) return document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
       fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
-        .then(res => res.json().then(j => ({ok: res.ok, ...j})))
+        .then(res => res.json().then(j => ({ok:res.ok,...j})))
         .then(data => {
           if (data.authenticated) {
             currentId = id;
-            document.getElementById('loginSection').style.display = 'none';
-            document.getElementById('examSection').style.display = 'block';
+            loginSection.style.display = 'none';
+            examSection .style.display = 'block';
             loadExams();
           } else {
-            document.getElementById('loginMsg').textContent = '인증되지 않은 ID입니다';
+            loginMsg.textContent = '인증되지 않은 ID입니다';
           }
-        })
-        .catch(() => {
-          document.getElementById('loginMsg').textContent = '인증 중 오류가 발생했습니다';
-        });
+        }).catch(() => loginMsg.textContent = '인증 중 오류 발생');
     };
 
-    // 2) 시험 목록 로드
     function loadExams() {
-      fetch('/api/exams')
-        .then(res => res.json())
-        .then(exams => {
-          const sel = document.getElementById('examSelect');
-          sel.innerHTML = '';
-          exams.forEach(e => {
-            const opt = document.createElement('option');
-            opt.value = e; opt.textContent = e;
-            sel.appendChild(opt);
-          });
-        })
-        .catch(() => {
-          document.getElementById('examMsg').textContent = '회차 목록 로드 실패';
+      fetch('/api/exams').then(r=>r.json()).then(exams=>{
+        examSelect.innerHTML = '';
+        exams.forEach(e=>{
+          const opt = document.createElement('option');
+          opt.value = e; opt.textContent = e;
+          examSelect.appendChild(opt);
         });
+      }).catch(()=>examMsg.textContent='회차 목록 로드 실패');
     }
 
-    // 3) 응시 여부 체크 → 옵션 버튼 노출
-    document.getElementById('examBtn').onclick = () => {
-      const exam = document.getElementById('examSelect').value;
+    examBtn.onclick = () => {
+      const exam = examSelect.value;
       fetch(`/api/check_exam?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`)
-        .then(res => res.json().then(j => ({ok: res.ok, ...j})))
+        .then(r=>r.json().then(j=>({ok:r.ok,...j})))
         .then(data => {
           if (data.registered) {
-            document.getElementById('examSection').style.display = 'none';
-            document.getElementById('optionSection').style.display = 'block';
+            examSection .style.display = 'none';
+            optionSection.style.display = 'block';
           } else {
-            document.getElementById('examMsg').textContent = data.error;
+            examMsg.textContent = data.error;
           }
         })
-        .catch(() => {
-          document.getElementById('examMsg').textContent = '응시 여부 확인 중 오류';
-        });
+        .catch(()=>examMsg.textContent='응시 여부 확인 중 오류');
     };
 
-    // 1) 내 성적표 보기
-    document.getElementById('reportBtn').onclick = () => {
-      const exam = document.getElementById('examSelect').value;
+    reportBtn.onclick = () => {
+      const exam = examSelect.value;
       window.open(`/report?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`, '_blank');
     };
-
-    // 2) 틀린 문제 다시 풀기 (미구현)
-    document.getElementById('reviewBtn').onclick = () => {
-      alert('틀린 문제 다시 풀기 기능은 곧 추가됩니다.');
-    };
-
-    // 3) O/X 퀴즈 (미구현)
-    document.getElementById('quizBtn').onclick = () => {
-      alert('O/X 퀴즈 기능은 곧 추가됩니다.');
-    };
+    reviewBtn.onclick = () => alert('틀린 문제 다시 풀기 기능은 곧 추가됩니다.');
+    quizBtn.onclick   = () => alert('O/X 퀴즈 기능은 곧 추가됩니다.');
   </script>
 </body>
 </html>
