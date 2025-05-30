@@ -1,3 +1,4 @@
+<!-- frontend/index.html -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -7,8 +8,7 @@
   <title>GAIA 모의고사 복습 사이트</title>
   <style>
     body {
-      margin: 0;
-      padding: 1rem;
+      margin: 0; padding: 1rem;
       font-family: sans-serif;
       background: #f9f9f9;
     }
@@ -20,7 +20,6 @@
       border-radius: 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
-    /* 제목 스타일: 한 줄로 꽉 채우기, 크기 확대 */
     h1 {
       margin: 0 0 0.25rem;
       font-size: 1.5rem;
@@ -28,6 +27,13 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+    /* GIF 이미지: 제목과 로그인 입력 사이로 이동 */
+    img.static {
+      display: block;
+      width: 40%;
+      max-width: 150px;
+      margin: 0.75rem auto 1.5rem;
     }
     input, select, button {
       display: block;
@@ -44,25 +50,20 @@
       color: white;
       border: none;
     }
-    /* GIF 이미지: 제목과 입력 사이로 이동, 왼쪽으로 약간 이동, 간격 확대 */
-    img.static {
-      display: block;
-      width: 40%;
-      max-width: 150px;
-      margin: 0.75rem auto 1.5rem;
-    }
     p.error {
       color: #d00;
       font-size: 0.9rem;
       margin: 0.25rem 0 0;
     }
+    /* 옵션 버튼 섹션 */
+    #optionSection button {
+      margin: 0.5rem 0;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- 제목 -->
     <h1>GAIA 모의고사 복습 사이트</h1>
-    <!-- 제목과 로그인 입력 사이에 GIF 이동 -->
     <img src="globe.gif" alt="Globe" class="static">
 
     <!-- 로그인 섹션 -->
@@ -78,6 +79,13 @@
       <select id="examSelect"></select>
       <button id="examBtn">선택</button>
       <p id="examMsg" class="error"></p>
+    </div>
+
+    <!-- 1·2·3번 옵션 버튼 -->
+    <div id="optionSection" style="display:none; text-align:center;">
+      <button id="reportBtn">1. 내 성적표 확인</button>
+      <button id="reviewBtn">2. 틀린 문제 다시 풀기</button>
+      <button id="quizBtn">3. 틀린 문제 O/X 퀴즈</button>
     </div>
   </div>
 
@@ -126,14 +134,15 @@
         });
     }
 
-    // 3) 응시 여부 체크
+    // 3) 응시 여부 체크 → 옵션 버튼 노출
     document.getElementById('examBtn').onclick = () => {
       const exam = document.getElementById('examSelect').value;
       fetch(`/api/check_exam?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`)
         .then(res => res.json().then(j => ({ok: res.ok, ...j})))
         .then(data => {
           if (data.registered) {
-            alert(`"${exam}" 응시 정보 확인됨. 문제풀이 서비스로 이동합니다.`);
+            document.getElementById('examSection').style.display = 'none';
+            document.getElementById('optionSection').style.display = 'block';
           } else {
             document.getElementById('examMsg').textContent = data.error;
           }
@@ -142,12 +151,22 @@
           document.getElementById('examMsg').textContent = '응시 여부 확인 중 오류';
         });
     };
+
+    // 1) 내 성적표 보기
+    document.getElementById('reportBtn').onclick = () => {
+      const exam = document.getElementById('examSelect').value;
+      window.open(`/report?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`, '_blank');
+    };
+
+    // 2) 틀린 문제 다시 풀기 (미구현)
+    document.getElementById('reviewBtn').onclick = () => {
+      alert('틀린 문제 다시 풀기 기능은 곧 추가됩니다.');
+    };
+
+    // 3) O/X 퀴즈 (미구현)
+    document.getElementById('quizBtn').onclick = () => {
+      alert('O/X 퀴즈 기능은 곧 추가됩니다.');
+    };
   </script>
 </body>
 </html>
-
-
-
-
-
-	

@@ -1,6 +1,7 @@
+# app.py
 import os
 from pathlib import Path
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file
 import pandas as pd
 
 # ─── 기본 경로 설정 ─────────────────────────────────
@@ -30,26 +31,21 @@ for exam_dir in DATA_DIR.iterdir():
         continue
 
     answer_dir = exam_dir / 'student_answer'
-    if not answer_dir.is_dir():
-        # student_answer 폴더가 없으면 빈 집합 등록
-        exam_ids[exam_dir.name] = set()
-        continue
-
     ids: set[str] = set()
-    for csv_path in answer_dir.glob('*.csv'):
-        # 각 CSV에서 이름(첫 컬럼) + 전화번호 끝4글자로 ID 생성
-        df = pd.read_csv(csv_path, dtype=str, header=0)
-        # 컬럼명이 다를 수 있으니 자동 감지
-        name_col  = '이름' if '이름' in df.columns else df.columns[0]
-        phone_col = '전화번호' if '전화번호' in df.columns else df.columns[1]
-        # 전화번호 끝 4글자
-        df['phone4']     = df[phone_col].str[-4:].fillna('')
-        df['reclass_id'] = df[name_col].fillna('') + df['phone4']
-        ids.update(df['reclass_id'].dropna().astype(str))
+    if answer_dir.is_dir():
+        for csv_path in answer_dir.glob('*.csv'):
+            df = pd.read_csv(csv_path, dtype=str)
+            # 이름 컬럼 자동 감지
+            name_col = '이름' if '이름' in df.columns else df.columns[0]
+            # 전화번호 컬럼 자동 감지
+            phone_col = '전화번호' if '전화번호' in df.columns else df.columns[1]
 
+            df['phone4']     = df[phone_col].str[-4:]
+            df['reclass_id'] = df[name_col] + df['phone4']
+            ids.update(df['reclass_id'].dropna().astype(str))
     exam_ids[exam_dir.name] = ids
 
-# ─── 3) 라우팅 ───────────────────────────────────────
+# ─── 3) 라우팅 ─────────────────────────────────────────────
 @app.route('/')
 def index():
     return send_from_directory(str(FRONTEND_DIR), 'index.html')
@@ -64,8 +60,9 @@ def api_authenticate():
 
 @app.route('/api/exams')
 def api_exams():
-    """data/ 폴더 아래 시험 디렉터리 이름(회차) 목록 반환"""
-    return jsonify([d.name for d in DATA_DIR.iterdir() if d.is_dir()])
+    # 데이터 디렉터리 바로 아래의 모든 시험 폴더 이름 반환
+    exams = [d.name for d in DATA_DIR.iterdir() if d.is_dir()]
+    return jsonify(exams)
 
 @app.route('/api/check_exam')
 def api_check_exam():
@@ -83,7 +80,27 @@ def api_check_exam():
         'error':      None if registered else '해당 모의고사의 응시 정보가 없습니다.'
     }), status
 
-# ─── 4) 앱 실행 ─────────────────────────────────────
+@app.route('/report')
+def api_report():
+    exam = request.args.get('exam', '').strip()
+    rid  = request.args.get('id', '').strip()
+    if not exam or not rid:
+        return jsonify({'error': 'Missing parameters'}), 400
+
+    report_dir = DATA_DIR / exam / 'report card'
+    if not report_dir.is_dir():
+        return jsonify({'error': 'Report not found'}), 404
+
+    # "{rid}_{exam}_..._성적표.png" 형태 파일 찾기
+    for fname in report_dir.iterdir():
+        if (fname.is_file()
+         and fname.name.startswith(f"{rid}_{exam}_")
+         and fname.name.endswith("_성적표.png")):
+            return send_file(str(fname), mimetype='image/png')
+
+    return jsonify({'error': 'Report not found'}), 404
+
+# ─── 4) 앱 실행 ─────────────────────────────────────────────
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
