@@ -1,105 +1,109 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8">
-  <!-- 모바일 퍼스트 뷰포트 -->
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GAIA 모의고사 복습 사이트</title>
-  <style>
+!DOCTYPE html
+html lang=ko
+head
+  meta charset=utf-8
+  !-- 모바일 퍼스트 뷰포트 --
+  meta name=viewport content=width=device-width, initial-scale=1
+  titleGAIA 모의고사 복습 사이트title
+  style
     body {
-      margin: 0;
-      padding: 1rem;
-      font-family: sans-serif;
-      background: #f9f9f9;
+      margin 0;
+      padding 1rem;
+      font-family sans-serif;
+      background #f9f9f9;
     }
     .container {
-      max-width: 400px;
-      margin: 0 auto;
-      background: white;
-      padding: 1rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      max-width 400px;
+      margin 0 auto;
+      background white;
+      padding 1rem;
+      padding-bottom 3rem;  하단 공간 추가 
+      border-radius 8px;
+      box-shadow 0 2px 6px rgba(0,0,0,0.1);
     }
-    /* 제목 스타일: 한 줄로 꽉 채우기, 글씨 크기 키움 */
+     제목 스타일 한 줄로 꽉 채우기, 글씨 크기 키움 
     h1 {
-      margin: 0 0 0.5rem;
-      font-size: 1.75rem;
-      text-align: center;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      margin 0 0 0.5rem;
+      font-size 1.75rem;
+      text-align center;
+      white-space nowrap;
+      overflow hidden;
+      text-overflow ellipsis;
     }
-    /* 지구본 이미지 회전 애니메이션: 속도를 느리게 (8초) */
+     로그인 섹션 밑 여백 강화 
+    #loginSection {
+      margin-bottom 4rem;
+    }
+     지구본 이미지 회전 애니메이션 속도를 느리게 (8초) 
     img.rotating {
-      display: block;
-      width: 60%;
-      max-width: 200px;
-      /* 로그인 영역과 겹치지 않도록 여백 증가 */
-      margin: 2rem auto 1rem;
-      animation: spin 8s linear infinite;
+      display block;
+      width 60%;
+      max-width 200px;
+      margin 0 auto 1rem;
+      animation spin 8s linear infinite;
     }
     @keyframes spin {
-      from { transform: rotate(0deg); }
-      to   { transform: rotate(360deg); }
+      from { transform rotate(0deg); }
+      to   { transform rotate(360deg); }
     }
     input, select, button {
-      display: block;
-      width: 100%;
-      padding: 0.75rem;
-      font-size: 1rem;
-      margin: 0.5rem 0;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      display block;
+      width 100%;
+      padding 0.75rem;
+      font-size 1rem;
+      margin 0.5rem 0;
+      box-sizing border-box;
+      border 1px solid #ccc;
+      border-radius 4px;
     }
     button {
-      background: #007bff;
-      color: white;
-      border: none;
+      background #007bff;
+      color white;
+      border none;
     }
     p.error {
-      color: #d00;
-      font-size: 0.9rem;
-      margin: 0.25rem 0 0;
+      color #d00;
+      font-size 0.9rem;
+      margin 0.25rem 0 0;
     }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <!-- ① 제목 변경 및 크기 조절 -->
-    <h1>GAIA 모의고사 복습 사이트</h1>
+  style
+head
+body
+  div class=container
+    !-- ① 제목 변경 및 크기 조절 --
+    h1GAIA 모의고사 복습 사이트h1
 
-    <!-- 로그인 섹션 -->
-    <div id="loginSection">
-      <input type="text" id="loginId" placeholder="리클래스 ID 입력">
-      <button id="loginBtn">로그인</button>
-      <p id="loginMsg" class="error"></p>
-      <!-- GIF가 버튼 아래 충분히 떨어지도록 배치 -->
-      <img src="/globe.gif" alt="Globe" class="rotating">
-    </div>
+    !-- 로그인 섹션 --
+    div id=loginSection
+      input type=text id=loginId placeholder=리클래스 ID 입력
+      button id=loginBtn로그인button
+      p id=loginMsg class=errorp
+      !-- GIF 위치 로그인 섹션 아래에 배치 --
+      img src=globe.gif alt=Globe class=rotating
+    div
 
-    <!-- 회차 선택 섹션 -->
-    <div id="examSection" style="display:none;">
-      <h2>회차 선택</h2>
-      <select id="examSelect"></select>
-      <button id="examBtn">선택</button>
-      <p id="examMsg" class="error"></p>
-    </div>
-  </div>
+    !-- 회차 선택 섹션 --
+    div id=examSection style=displaynone;
+      h2회차 선택h2
+      select id=examSelectselect
+      button id=examBtn선택button
+      p id=examMsg class=errorp
+    div
+  div
 
-  <script>
+  script
     let currentId = '';
 
-    // 1) 로그인
-    document.getElementById('loginBtn').onclick = () => {
+     1) 로그인
+    document.getElementById('loginBtn').onclick = () = {
       const id = document.getElementById('loginId').value.trim();
       if (!id) {
         document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
         return;
       }
-      fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
-        .then(res => res.json().then(j => ({ok: res.ok, ...j})))
-        .then(data => {
+      fetch(`apiauthenticateid=${encodeURIComponent(id)}`)
+        .then(res = res.json().then(j = ({ok res.ok, ...j})))
+        .then(data = {
           if (data.authenticated) {
             currentId = id;
             document.getElementById('loginSection').style.display = 'none';
@@ -109,47 +113,48 @@
             document.getElementById('loginMsg').textContent = '인증되지 않은 ID입니다';
           }
         })
-        .catch(() => {
+        .catch(() = {
           document.getElementById('loginMsg').textContent = '인증 중 오류가 발생했습니다';
         });
     };
 
-    // 2) 시험 목록 로드
+     2) 시험 목록 로드
     function loadExams() {
-      fetch('/api/exams')
-        .then(res => res.json())
-        .then(exams => {
+      fetch('apiexams')
+        .then(res = res.json())
+        .then(exams = {
           const sel = document.getElementById('examSelect');
           sel.innerHTML = '';
-          exams.forEach(e => {
+          exams.forEach(e = {
             const opt = document.createElement('option');
             opt.value = e; opt.textContent = e;
             sel.appendChild(opt);
           });
         })
-        .catch(() => {
+        .catch(() = {
           document.getElementById('examMsg').textContent = '회차 목록 로드 실패';
         });
     }
 
-    // 3) 응시 여부 체크
-    document.getElementById('examBtn').onclick = () => {
+     3) 응시 여부 체크
+    document.getElementById('examBtn').onclick = () = {
       const exam = document.getElementById('examSelect').value;
-      fetch(`/api/check_exam?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`)
-        .then(res => res.json().then(j => ({ok: res.ok, ...j})))
-        .then(data => {
+      fetch(`apicheck_examexam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`)
+        .then(res = res.json().then(j = ({ok res.ok, ...j})))
+        .then(data = {
           if (data.registered) {
-            alert(`"${exam}" 응시 정보 확인됨. 문제풀이 서비스로 이동합니다.`);
+            alert(`${exam} 응시 정보 확인됨. 문제풀이 서비스로 이동합니다.`);
           } else {
             document.getElementById('examMsg').textContent = data.error;
           }
         })
-        .catch(() => {
+        .catch(() = {
           document.getElementById('examMsg').textContent = '응시 여부 확인 중 오류';
         });
     };
-  </script>
-</body>
-</html>
+  script
+body
+html
+
 
 	
