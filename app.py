@@ -1,8 +1,10 @@
+# app.py
 import os
 from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory, send_file
 import pandas as pd
 
+# ─── 기본 경로 설정 ─────────────────────────────────
 BASE_DIR          = Path(__file__).parent.resolve()
 DATA_DIR          = BASE_DIR / 'data'
 STUDENT_LIST_PATH = DATA_DIR / 'student_list.csv'
@@ -11,17 +13,17 @@ FRONTEND_DIR      = BASE_DIR / 'frontend'
 app = Flask(
     __name__,
     static_folder=str(FRONTEND_DIR),
-    static_url_path='/'
+    static_url_path='/'    
 )
 
-# 1) 로그인 인증용 ID 집합
+# ─── 1) student_list.csv 에서 로그인 허용 ID 집합 로드 ────
 student_df = pd.read_csv(STUDENT_LIST_PATH, header=None, dtype=str)
 valid_ids  = set(student_df.iloc[:, 0].dropna().astype(str))
 
 def authenticate(rid: str) -> bool:
     return rid in valid_ids
 
-# 2) 시험별 응시자 ID 집합 로드
+# ─── 2) 각 시험별 student_answer/*.csv 읽어 응시 가능한 ID 집합 생성 ────
 exam_ids: dict[str, set[str]] = {}
 for exam_dir in DATA_DIR.iterdir():
     if not exam_dir.is_dir():
@@ -38,7 +40,7 @@ for exam_dir in DATA_DIR.iterdir():
             ids.update(df['reclass_id'].dropna().astype(str))
     exam_ids[exam_dir.name] = ids
 
-# 3) 라우팅
+# ─── 3) 라우팅 ─────────────────────────────────────────────
 @app.route('/')
 def index():
     return send_from_directory(str(FRONTEND_DIR), 'index.html')
@@ -82,13 +84,19 @@ def api_report():
         return jsonify({'error':'Report not found'}),404
 
     # 재귀적으로 모든 PNG 검색
-    for img_path in report_dir.rglob('*.png'):
+    png_paths = list(report_dir.rglob('*.png'))
+    # 첫째, 패턴 매칭
+    for img_path in png_paths:
         name = img_path.name
         if name.startswith(f"{rid}_{exam}_") and name.endswith("_성적표.png"):
             return send_file(str(img_path), mimetype='image/png')
+    # 매칭 파일 없으면 첫 PNG 반환
+    if png_paths:
+        return send_file(str(png_paths[0]), mimetype='image/png')
 
     return jsonify({'error':'Report not found'}),404
 
+# ─── 4) 앱 실행 ─────────────────────────────────────────────
 if __name__=='__main__':
     port = int(os.environ.get('PORT',5000))
     app.run(host='0.0.0.0',port=port)
