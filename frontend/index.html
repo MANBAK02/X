@@ -20,22 +20,22 @@
       border-radius: 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
-    /* 제목 스타일: 한 줄로 꽉 채우기 */
+    /* 제목 스타일: 한 줄로 꽉 채우기, 글씨 크기 키움 */
     h1 {
       margin: 0 0 0.5rem;
-      font-size: 1.25rem;
+      font-size: 1.75rem;
       text-align: center;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    /* 지구본 이미지 회전 애니메이션 */
+    /* 지구본 이미지 회전 애니메이션: 속도를 느리게 (8초) */
     img.rotating {
       display: block;
       width: 60%;
       max-width: 200px;
       margin: 0.5rem auto 1rem;
-      animation: spin 4s linear infinite;
+      animation: spin 8s linear infinite;
     }
     @keyframes spin {
       from { transform: rotate(0deg); }
@@ -65,16 +65,16 @@
 </head>
 <body>
   <div class="container">
-    <!-- ① 제목 변경 -->
+    <!-- ① 제목 변경 및 크기 조절 -->
     <h1>GAIA 모의고사 복습 사이트</h1>
-    <!-- ② 지구본 움짤: frontend/globe.gif -->
-    <img src="globe.gif" alt="Globe" class="rotating">
 
     <!-- 로그인 섹션 -->
     <div id="loginSection">
       <input type="text" id="loginId" placeholder="리클래스 ID 입력">
       <button id="loginBtn">로그인</button>
       <p id="loginMsg" class="error"></p>
+      <!-- ② 로그인 버튼 밑에 GIF 추가 -->
+      <img src="/globe.gif" alt="Globe" class="rotating">
     </div>
 
     <!-- 회차 선택 섹션 -->
@@ -97,7 +97,7 @@
         return;
       }
       fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
-        .then(res => res.json().then(j=>({ok:res.ok,...j})))
+        .then(res => res.json().then(j => ({ok: res.ok, ...j})))
         .then(data => {
           if (data.authenticated) {
             currentId = id;
@@ -135,7 +135,7 @@
     document.getElementById('examBtn').onclick = () => {
       const exam = document.getElementById('examSelect').value;
       fetch(`/api/check_exam?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`)
-        .then(res => res.json().then(j=>({ok:res.ok,...j})))
+        .then(res => res.json().then(j => ({ok: res.ok, ...j})))
         .then(data => {
           if (data.registered) {
             alert(`"${exam}" 응시 정보 확인됨. 문제풀이 서비스로 이동합니다.`);
