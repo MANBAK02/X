@@ -34,7 +34,8 @@
       display: block;
       width: 60%;
       max-width: 200px;
-      margin: 0.5rem auto 1rem;
+      /* 로그인 영역과 겹치지 않도록 여백 증가 */
+      margin: 2rem auto 1rem;
       animation: spin 8s linear infinite;
     }
     @keyframes spin {
@@ -73,7 +74,7 @@
       <input type="text" id="loginId" placeholder="리클래스 ID 입력">
       <button id="loginBtn">로그인</button>
       <p id="loginMsg" class="error"></p>
-      <!-- ② 로그인 버튼 밑에 GIF 추가 -->
+      <!-- GIF가 버튼 아래 충분히 떨어지도록 배치 -->
       <img src="/globe.gif" alt="Globe" class="rotating">
     </div>
 
@@ -150,3 +151,5 @@
   </script>
 </body>
 </html>
+
+	
