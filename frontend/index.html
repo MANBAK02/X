@@ -5,79 +5,141 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GAIA 모의고사 복습 사이트</title>
   <style>
-    body { margin:0; padding:1rem; font-family:sans-serif; background:#f9f9f9; }
+    /* ─── 전체 공통 스타일 ───────────────────────── */
+    body {
+      margin: 0;
+      padding: 1rem;
+      font-family: sans-serif;
+      background: #f9f9f9;
+    }
+    /* .container의 너비 및 세로 길이 */
     .container {
-      max-width:1200px;
+      max-width: 600px;            /* 좌우 넓이 */
       width: 100%;
-      margin:0 auto;
-      background:white;
-      padding:2rem;             /* 상하 패딩을 늘려 세로 길이 확장 */
-      min-height:800px;        /* 최소 높이 지정 */
-      border-radius:8px;
-      box-shadow:0 2px 6px rgba(0,0,0,0.1);
+      margin: 0 auto;
+      background: white;
+      padding: 2rem;               /* 상하 패딩 */
+      min-height: 800px;           /* 최소 높이 */
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      position: relative;          /* “처음으로” 버튼 위치 지정용 */
     }
+    /* ─── 제목 스타일 ─────────────────────────────── */
     h1 {
-      margin:0 0 0.5rem;
-      font-size:1.75rem;
-      text-align:center;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      margin: 0 0 0.5rem;
+      font-size: 1.75rem;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
+    /* ─── 홈 버튼 스타일 (아이콘+텍스트 크기 16px) ─────── */
+    .home-btn {
+      position: absolute;
+      top: 1rem;
+      left: 1rem;
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      color: #333;
+      font-size: 1rem; /* 16px */
+    }
+    .home-btn img {
+      width: 16px;
+      height: 16px;
+      margin-right: 0.25rem;
+    }
+    /* ─── 정지된 지구본 이미지 ───────────────────────── */
     img.static {
-      display:block;
-      width:40%;
-      max-width:150px;
-      margin:0.75rem auto 1.5rem;
+      display: block;
+      width: 40%;
+      max-width: 150px;
+      margin: 0.75rem auto 1.5rem;
     }
+    /* ─── 폼 요소 스타일 ──────────────────────────── */
     input, select, button {
-      display:block;
-      width:100%;
-      padding:0.75rem;
-      font-size:1rem;
-      margin:0.75rem 0;
-      box-sizing:border-box;
-      border:1px solid #ccc;
-      border-radius:4px;
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem; /* 16px */
+      margin: 0.75rem 0;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
     }
-    button { background:#007bff; color:white; border:none; }
-    p.error { color:#d00; font-size:0.9rem; margin:0.25rem 0 0; }
-    #optionSection button { margin:0.75rem 0; }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+    }
+    p.error {
+      color: #d00;
+      font-size: 0.9rem;
+      margin: 0.25rem 0 0;
+    }
+    /* ─── 옵션 버튼 섹션 간격 ───────────────────────── */
+    #optionSection button {
+      margin: 0.75rem 0;
+    }
   </style>
 </head>
 <body>
+  <!-- ─── 컨테이너 시작 ──────────────────────────── -->
   <div class="container">
+    <!-- ① “처음으로” 버튼: index.html 제외 시 display:none 처리 -->
+    <a href="/" class="home-btn" id="homeButton" style="display: none;">
+      <!-- frontend/icons/home.svg 위치에 아이콘 파일 저장 -->
+      <img src="icons/home.svg" alt="Home Icon">
+      <span>처음으로</span>
+    </a>
+
+    <!-- ② 페이지 제목 -->
     <h1>GAIA 모의고사 복습 사이트</h1>
+
+    <!-- ③ 정지된 지구본 이미지 -->
     <img src="globe.gif" alt="Globe" class="static">
 
+    <!-- ── 로그인 섹션 ───────────────────────── -->
     <div id="loginSection">
       <input type="text" id="loginId" placeholder="리클래스 ID 입력">
       <button id="loginBtn">로그인</button>
       <p id="loginMsg" class="error"></p>
     </div>
 
-    <div id="examSection" style="display:none;">
+    <!-- ── 회차 선택 섹션 ───────────────────────── -->
+    <div id="examSection" style="display: none;">
       <h2>회차 선택</h2>
       <select id="examSelect"></select>
       <button id="examBtn">선택</button>
       <p id="examMsg" class="error"></p>
     </div>
 
-    <div id="optionSection" style="display:none; text-align:center;">
+    <!-- ── 옵션 버튼 섹션 (보고서/문제풀기/퀴즈) ─────────── -->
+    <div id="optionSection" style="display: none; text-align: center;">
       <button id="reportBtn">1. 내 성적표 확인</button>
       <button id="reviewBtn">2. 틀린 문제 다시 풀기</button>
       <button id="quizBtn">3. 틀린 문제 O/X 퀴즈</button>
     </div>
   </div>
-
+  <!-- ─── 스크립트 ───────────────────────────────── -->
   <script>
     let currentId = '';
+    const homeBtn = document.getElementById('homeButton');
 
+    // 메인 페이지(index.html)에서는 “처음으로” 버튼 숨김
+    if (window.location.pathname !== '/') {
+      homeBtn.style.display = 'flex';
+    }
+
+    // 1) 로그인
     document.getElementById('loginBtn').onclick = () => {
       const id = document.getElementById('loginId').value.trim();
-      if (!id) return document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
+      if (!id) {
+        document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
+        return;
+      }
       fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
-        .then(res => res.json().then(j => ({ok:res.ok,...j})))
+        .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
         .then(data => {
           if (data.authenticated) {
             currentId = id;
@@ -87,25 +149,36 @@
           } else {
             document.getElementById('loginMsg').textContent = '인증되지 않은 ID입니다';
           }
-        }).catch(() => document.getElementById('loginMsg').textContent = '인증 중 오류 발생');
+        })
+        .catch(() => {
+          document.getElementById('loginMsg').textContent = '인증 중 오류 발생';
+        });
     };
 
+    // 2) 회차 목록 로드
     function loadExams() {
-      fetch('/api/exams').then(r=>r.json()).then(exams=>{
-        const sel = document.getElementById('examSelect');
-        sel.innerHTML = '';
-        exams.forEach(e=>{
-          const opt = document.createElement('option');
-          opt.value = e; opt.textContent = e;
-          sel.appendChild(opt);
+      fetch('/api/exams')
+        .then(res => res.json())
+        .then(exams => {
+          const sel = document.getElementById('examSelect');
+          sel.innerHTML = '';
+          exams.forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e;
+            opt.textContent = e;
+            sel.appendChild(opt);
+          });
+        })
+        .catch(() => {
+          document.getElementById('examMsg').textContent = '회차 목록 로드 실패';
         });
-      }).catch(() => document.getElementById('examMsg').textContent='회차 목록 로드 실패');
     }
 
+    // 3) 회차 선택 후 응시 여부 확인
     document.getElementById('examBtn').onclick = () => {
       const exam = document.getElementById('examSelect').value;
       fetch(`/api/check_exam?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`)
-        .then(r=>r.json().then(j=>({ok:r.ok,...j})))
+        .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
         .then(data => {
           if (data.registered) {
             document.getElementById('examSection').style.display = 'none';
@@ -114,15 +187,21 @@
             document.getElementById('examMsg').textContent = data.error;
           }
         })
-        .catch(() => document.getElementById('examMsg').textContent='응시 여부 확인 중 오류');
+        .catch(() => {
+          document.getElementById('examMsg').textContent = '응시 여부 확인 중 오류';
+        });
     };
 
+    // 4) 내 성적표 확인 → 새 탭으로 /report 호출
     document.getElementById('reportBtn').onclick = () => {
       const exam = document.getElementById('examSelect').value;
       window.open(`/report?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`, '_blank');
     };
-    document.getElementById('reviewBtn').onclick = () => alert('틀린 문제 다시 풀기 기능은 곧 추가됩니다.');
-    document.getElementById('quizBtn').onclick   = () => alert('O/X 퀴즈 기능은 곧 추가됩니다.');
+    document.getElementById('reviewBtn').onclick = () =>
+      alert('틀린 문제 다시 풀기 기능은 곧 추가됩니다.');
+    document.getElementById('quizBtn').onclick = () =>
+      alert('O/X 퀴즈 기능은 곧 추가됩니다.');
   </script>
 </body>
 </html>
+
