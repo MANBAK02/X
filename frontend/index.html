@@ -7,16 +7,17 @@
   <style>
     body { margin:0; padding:1rem; font-family:sans-serif; background:#f9f9f9; }
     .container {
-      max-width:1200px; /* 페이지 경계 확장: 1200px로 조정 */
+      max-width:1200px;
       width: 100%;
       margin:0 auto;
       background:white;
-      padding:1rem;
+      padding:2rem;             /* 상하 패딩을 늘려 세로 길이 확장 */
+      min-height:800px;        /* 최소 높이 지정 */
       border-radius:8px;
       box-shadow:0 2px 6px rgba(0,0,0,0.1);
     }
     h1 {
-      margin:0 0 0.25rem;
+      margin:0 0 0.5rem;
       font-size:1.75rem;
       text-align:center;
       white-space:nowrap;
@@ -34,14 +35,14 @@
       width:100%;
       padding:0.75rem;
       font-size:1rem;
-      margin:0.5rem 0;
+      margin:0.75rem 0;
       box-sizing:border-box;
       border:1px solid #ccc;
       border-radius:4px;
     }
     button { background:#007bff; color:white; border:none; }
     p.error { color:#d00; font-size:0.9rem; margin:0.25rem 0 0; }
-    #optionSection button { margin:0.5rem 0; }
+    #optionSection button { margin:0.75rem 0; }
   </style>
 </head>
 <body>
