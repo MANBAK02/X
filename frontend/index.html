@@ -7,21 +7,37 @@
   <style>
     body { margin:0; padding:1rem; font-family:sans-serif; background:#f9f9f9; }
     .container {
-      max-width:400px; margin:0 auto; background:white;
-      padding:1rem; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1);
+      max-width:1200px; /* 페이지 경계 확장: 1200px로 조정 */
+      width: 100%;
+      margin:0 auto;
+      background:white;
+      padding:1rem;
+      border-radius:8px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.1);
     }
     h1 {
-      margin:0 0 0.25rem; font-size:1.5rem; text-align:center;
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      margin:0 0 0.25rem;
+      font-size:1.75rem;
+      text-align:center;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
     img.static {
-      display:block; width:40%; max-width:150px;
+      display:block;
+      width:40%;
+      max-width:150px;
       margin:0.75rem auto 1.5rem;
     }
     input, select, button {
-      display:block; width:100%; padding:0.75rem;
-      font-size:1rem; margin:0.5rem 0; box-sizing:border-box;
-      border:1px solid #ccc; border-radius:4px;
+      display:block;
+      width:100%;
+      padding:0.75rem;
+      font-size:1rem;
+      margin:0.5rem 0;
+      box-sizing:border-box;
+      border:1px solid #ccc;
+      border-radius:4px;
     }
     button { background:#007bff; color:white; border:none; }
     p.error { color:#d00; font-size:0.9rem; margin:0.25rem 0 0; }
@@ -64,47 +80,48 @@
         .then(data => {
           if (data.authenticated) {
             currentId = id;
-            loginSection.style.display = 'none';
-            examSection .style.display = 'block';
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('examSection').style.display = 'block';
             loadExams();
           } else {
-            loginMsg.textContent = '인증되지 않은 ID입니다';
+            document.getElementById('loginMsg').textContent = '인증되지 않은 ID입니다';
           }
-        }).catch(() => loginMsg.textContent = '인증 중 오류 발생');
+        }).catch(() => document.getElementById('loginMsg').textContent = '인증 중 오류 발생');
     };
 
     function loadExams() {
       fetch('/api/exams').then(r=>r.json()).then(exams=>{
-        examSelect.innerHTML = '';
+        const sel = document.getElementById('examSelect');
+        sel.innerHTML = '';
         exams.forEach(e=>{
           const opt = document.createElement('option');
           opt.value = e; opt.textContent = e;
-          examSelect.appendChild(opt);
+          sel.appendChild(opt);
         });
-      }).catch(()=>examMsg.textContent='회차 목록 로드 실패');
+      }).catch(() => document.getElementById('examMsg').textContent='회차 목록 로드 실패');
     }
 
-    examBtn.onclick = () => {
-      const exam = examSelect.value;
+    document.getElementById('examBtn').onclick = () => {
+      const exam = document.getElementById('examSelect').value;
       fetch(`/api/check_exam?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`)
         .then(r=>r.json().then(j=>({ok:r.ok,...j})))
         .then(data => {
           if (data.registered) {
-            examSection .style.display = 'none';
-            optionSection.style.display = 'block';
+            document.getElementById('examSection').style.display = 'none';
+            document.getElementById('optionSection').style.display = 'block';
           } else {
-            examMsg.textContent = data.error;
+            document.getElementById('examMsg').textContent = data.error;
           }
         })
-        .catch(()=>examMsg.textContent='응시 여부 확인 중 오류');
+        .catch(() => document.getElementById('examMsg').textContent='응시 여부 확인 중 오류');
     };
 
-    reportBtn.onclick = () => {
-      const exam = examSelect.value;
+    document.getElementById('reportBtn').onclick = () => {
+      const exam = document.getElementById('examSelect').value;
       window.open(`/report?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`, '_blank');
     };
-    reviewBtn.onclick = () => alert('틀린 문제 다시 풀기 기능은 곧 추가됩니다.');
-    quizBtn.onclick   = () => alert('O/X 퀴즈 기능은 곧 추가됩니다.');
+    document.getElementById('reviewBtn').onclick = () => alert('틀린 문제 다시 풀기 기능은 곧 추가됩니다.');
+    document.getElementById('quizBtn').onclick   = () => alert('O/X 퀴즈 기능은 곧 추가됩니다.');
   </script>
 </body>
 </html>
