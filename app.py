@@ -1,4 +1,3 @@
-# app.py
 import os
 from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory, abort
@@ -7,16 +6,16 @@ import pandas as pd
 app = Flask(__name__, static_folder='frontend', static_url_path='/')
 
 
-# ─── 기본 경로 설정 ─────────────────────────────────────────
+# ─── 기본 경로 설정 ─────────────────────────────────────────────────────────
 BASE_DIR          = Path(__file__).parent.resolve()
 DATA_DIR          = BASE_DIR / 'data'
 STUDENT_LIST_PATH = DATA_DIR / 'student_list.csv'
 FRONTEND_DIR      = BASE_DIR / 'frontend'
 
 
-# ─── 1) student_list.csv 에서 로그인 허용 ID 집합 로드 ─────────────────
+# ─── 1) student_list.csv 에서 로그인 허용 ID 집합 로드 ─────────────────────────────
 try:
-    # header=None: 첫 열 전체를 ID 목록으로 취급
+    # header=None → 첫 열 전체를 ID 목록으로 취급
     student_df = pd.read_csv(STUDENT_LIST_PATH, header=None, dtype=str)
     valid_ids  = set(student_df.iloc[:, 0].dropna().astype(str))
 except Exception:
@@ -27,30 +26,29 @@ def authenticate(rid: str) -> bool:
     return rid in valid_ids
 
 
-# ─── 2) 각 시험 폴더 안의 student_answer/ 하위 모든 CSV를 읽어 응시 가능한 ID 집합 생성 ──────
-exam_ids = {}     # { exam_name: {rid1, rid2, ...}, ... }
-exam_files = {}   # { exam_name: [Path1, Path2, ...] } → answer/ 밑 CSV 목록
+# ─── 2) 각 시험 폴더 안의 answer/ 하위 모든 CSV를 읽어 응시 가능한 ID 집합 생성 ────
+exam_ids = {}    # { exam_name: {rid1, rid2, ...}, ... }
+exam_files = {}  # { exam_name: [Path1, Path2, ...] } → answer/ 밑 CSV 목록
 
 for exam_dir in DATA_DIR.iterdir():
     if not exam_dir.is_dir():
         continue
 
-    # 2-1) “answer” 폴더로 간주
-    answer_dir = exam_dir / 'answer'
+    answer_dir = exam_dir / 'answer'   # “answer” 폴더로 간주
     if not answer_dir.exists() or not answer_dir.is_dir():
-        # answer/ 폴더가 없으면 이 exam_dir는 회차로 인정하지 않음
+        # answer/ 폴더가 없으면 회차로 인정하지 않음
         continue
 
-    # 2-2) answer/ 폴더 하위의 모든 CSV 파일 경로 수집
+    # answer/ 폴더 하위의 모든 CSV 파일 경로 수집
     csv_list = list(answer_dir.rglob('*.csv'))
     if not csv_list:
         # CSV 파일이 하나도 없으면 회차로 인정하지 않음
         continue
 
-    # exam_files에 저장(향후 메타정보로 사용 가능)
+    # exam_files에 저장 (향후 문제 메타 데이터로 사용 가능)
     exam_files[exam_dir.name] = csv_list
 
-    # 2-3) 응시 가능한 ID 집합 생성 (이름+전화끝4자리)
+    # 응시 가능한 ID 집합 생성 (이름+전화끝4자리 OR 첫 번째 컬럼 자체가 reclass_id)
     ids = set()
     for csv_path in csv_list:
         try:
@@ -58,7 +56,7 @@ for exam_dir in DATA_DIR.iterdir():
         except Exception:
             continue
 
-        # “이름”과 “전화번호” 컬럼이 있으면 → reclass_id = 이름 + 전화끝4
+        # “이름”과 “전화번호” 칼럼이 있으면 → reclass_id = 이름 + 전화끝4
         if '이름' in df.columns and '전화번호' in df.columns:
             names  = df['이름'].astype(str)
             phones = df['전화번호'].astype(str).str[-4:]
@@ -71,7 +69,7 @@ for exam_dir in DATA_DIR.iterdir():
     exam_ids[exam_dir.name] = ids
 
 
-# ─── 3) 라우팅 ──────────────────────────────────────────────────
+# ─── 3) 라우팅 ────────────────────────────────────────────────────────────────
 
 @app.route('/')
 def index():
@@ -90,9 +88,9 @@ def api_authenticate():
 @app.route('/api/exams')
 def api_exams():
     """
-    data/ 폴더 아래, 
-    ‒ “answer” 폴더가 존재하고 
-    ‒ 그 안에 *.csv 파일이 한 개 이상 있어야 하는 
+    data/ 폴더 아래,
+    ‒ “answer” 폴더가 존재하고
+    ‒ 그 안에 *.csv 파일이 한 개 이상 있어야 하는
     시험 디렉터리 이름 목록을 반환
     """
     return jsonify(list(exam_ids.keys()))
@@ -115,7 +113,7 @@ def api_check_exam():
     }), status
 
 
-# ─── 4) /report 라우트: “report card” 폴더에서 학생 성적표 이미지만 엄격 매칭 ───────────
+# ─── 4) /report 라우트: “report card” 폴더에서 학생 성적표 이미지만 엄격 매칭 ───────
 @app.route('/report')
 def report_view():
     exam = request.args.get('exam', '').strip()
@@ -192,7 +190,7 @@ def report_view():
     return html
 
 
-# ─── 5) static 파일: icons 디렉터리 및 data 내 이미지/CSV도 제공 ──────────────
+# ─── 5) 정적 파일 제공: icons 및 data 경로 ─────────────────────────────────────
 @app.route('/icons/<path:filename>')
 def serve_icon(filename):
     return send_from_directory(str(FRONTEND_DIR / 'icons'), filename)
@@ -208,4 +206,3 @@ if __name__ == '__main__':
     import waitress
     port = int(os.environ.get('PORT', 5000))
     waitress.serve(app, host='0.0.0.0', port=port)
-
