@@ -6,7 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title>GAIA 모의고사 복습 사이트</title>
+
   <style>
+    /* ─── 페이지 전체 기본 설정 ───────────────────────────────────── */
     body {
       margin: 0;
       padding: 1rem;
@@ -14,27 +16,21 @@
       background: #f9f9f9;
     }
     .container {
-      max-width: 400px;
-      margin: 0 auto;
+      max-width: 400px;          /* 좌우 폭 400px로 고정 */
+      margin: 0 auto;            /* 화면 중앙 정렬 */
       background: white;
       padding: 1rem;
       border-radius: 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     }
-    h1 {
-      margin: 0 0 0.5rem;
-      font-size: 1.5rem; /* 제목을 좀 더 키움 */
-      text-align: center;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+
+    /* ─── “처음으로” 버튼 ───────────────────────────────────── */
     .home-button {
       display: flex;
       align-items: center;
       cursor: pointer;
       margin-bottom: 1rem;
-      font-size: 16px;
+      font-size: 16px;           /* 아이콘 및 텍스트 16px */
       color: #007bff;
     }
     .home-button img {
@@ -42,6 +38,26 @@
       height: 16px;
       margin-right: 0.25rem;
     }
+
+    /* ─── 공통 제목 스타일 ───────────────────────────────────── */
+    h1 {
+      margin: 0 0 0.5rem;
+      font-size: 1.5rem;         /* 제목 크기를 1.5rem으로 키움 */
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ─── 상단 로고 / GIF ───────────────────────────────────── */
+    img.top-gif {
+      display: block;
+      width: 60%;
+      max-width: 200px;
+      margin: 0 auto 1rem;       /* 제목 아래 간격 1rem */
+    }
+
+    /* ─── 입력창, 셀렉트, 버튼 공통 스타일 ──────────────────── */
     input, select, button {
       display: block;
       width: 100%;
@@ -56,49 +72,67 @@
       background: #007bff;
       color: white;
       border: none;
+      cursor: pointer;
     }
+    button:hover {
+      background: #0056b3;
+    }
+
+    /* ─── 오류 메시지(빨간 글씨) ───────────────────────────────── */
     p.error {
       color: #d00;
       font-size: 0.9rem;
       margin: 0.25rem 0 0;
     }
-    /* 메뉴 버튼 */
-    .menu-button {
-      background: #28a745;
-      margin-bottom: 0.75rem;
+
+    /* ─── 회차 선택 화면 제목 ───────────────────────────────── */
+    h2 {
+      font-size: 1.25rem;
+      margin: 0.5rem 0;
+      text-align: center;
     }
-    .menu-button:nth-child(2) { background: #ffc107; }
-    .menu-button:nth-child(3) { background: #dc3545; }
+
+    /* ─── 메뉴 버튼 스타일 ──────────────────────────────────── */
     .menu-button {
-      color: white;
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
       font-size: 1rem;
+      margin-bottom: 0.75rem;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+      text-align: left;
     }
-    /* 리포트 카드 이미지 */
+    .menu-button:nth-child(1) { background: #28a745; }  /* 초록 */
+    .menu-button:nth-child(2) { background: #ffc107; color: #333; } /* 노랑(글자 검정) */
+    .menu-button:nth-child(3) { background: #dc3545; }  /* 빨강 */
+
+    /* ─── 성적표 이미지 스타일 ─────────────────────────────── */
     .report-img {
       display: block;
       max-width: 100%;
       margin: 0 auto;
     }
-    /* GIF (로그인/메인 페이지 상단 로고) */
-    .top-gif {
-      display: block;
-      width: 60%;
-      max-width: 200px;
-      margin: 0 auto 1rem;
+
+    /* ─── 숨김/보이기용 클래스 ───────────────────────────────── */
+    .hidden {
+      display: none;
     }
-    /* 각 섹션 숨김/보이기 */
-    .hidden { display: none; }
   </style>
 </head>
+
 <body>
   <div class="container">
-    <!-- “처음으로” 버튼 (로그인/메인 제외 나머지 페이지에서만 보이도록 JS가 제어) -->
+
+    <!-- ─── “처음으로” 버튼 (로그인·메인 제외 페이지에만 노출) ─────────────────────────── -->
     <div id="homeButton" class="home-button hidden">
-      <img src="icons/home.svg" alt="Home 아이콘"> 
+      <img src="icons/home.svg" alt="Home 아이콘">
       <span>처음으로</span>
     </div>
 
-    <!-- ① 로그인 페이지 -->
+    <!-- ─── ① 로그인 페이지 섹션 ───────────────────────────────────────────────────────── -->
     <div id="loginSection">
       <h1>GAIA 모의고사 복습 사이트</h1>
       <img src="globe.gif" alt="Globe 로고" class="top-gif">
@@ -107,15 +141,16 @@
       <p id="loginMsg" class="error"></p>
     </div>
 
-    <!-- ② 회차 선택 페이지 -->
+    <!-- ─── ② 회차 선택 페이지 섹션 ─────────────────────────────────────────────────────── -->
     <div id="examSection" class="hidden">
       <h1>GAIA 모의고사 복습 사이트</h1>
+      <h2>회차 선택</h2>
       <select id="examSelect"></select>
       <button id="examBtn">회차 선택</button>
       <p id="examMsg" class="error"></p>
     </div>
 
-    <!-- ③ 메뉴 페이지 (1. 내 성적표 / 2. 틀린 문제 다시 풀기 / 3. OX 퀴즈) -->
+    <!-- ─── ③ 메뉴 페이지 섹션: 1.내 성적표  2.틀린 문제 다시 풀기  3.OX 퀴즈────────────────── -->
     <div id="menuSection" class="hidden">
       <h1>GAIA 모의고사 복습 사이트</h1>
       <button class="menu-button" id="menuReport">1. 내 성적표 확인</button>
@@ -124,53 +159,72 @@
       <p id="menuMsg" class="error"></p>
     </div>
 
-    <!-- ④ 성적표 표시 페이지 -->
+    <!-- ─── ④ 성적표 표시 페이지 섹션 ──────────────────────────────────────────────────── -->
     <div id="reportSection" class="hidden">
       <h1>내 성적표</h1>
       <img id="reportImage" class="report-img" alt="성적표 이미지">
       <p id="reportMsg" class="error"></p>
     </div>
 
-    <!-- ⑤ 틀린 문제 다시 풀기 (준비 중) -->
+    <!-- ─── ⑤ 틀린 문제 다시 풀기 페이지 섹션 (준비 중) ───────────────────────────────── -->
     <div id="reviewSection" class="hidden">
       <h1>틀린 문제 다시 풀기 (준비 중)</h1>
     </div>
-    <!-- ⑥ 틀린 문제 OX 퀴즈 (준비 중) -->
+
+    <!-- ─── ⑥ 틀린 문제 O/X 퀴즈 페이지 섹션 (준비 중) ─────────────────────────────────── -->
     <div id="quizSection" class="hidden">
       <h1>틀린 문제 O/X 퀴즈 (준비 중)</h1>
     </div>
-  </div>
+
+  </div><!-- .container 닫기 -->
+
 
   <script>
     let currentId = '';
     let currentExam = '';
 
-    // “처음으로” 버튼 클릭 → 로그인 페이지로 돌아가기
+    /****************************************************************************
+     * “처음으로” 버튼 클릭 핸들러
+     * - 로그인 페이지를 제외한 모든 페이지(Section)에서 보이도록,
+     *   클릭 시 다시 로그인 화면으로 돌아가게 합니다.
+     ****************************************************************************/
     document.getElementById('homeButton').onclick = () => {
-      showSection('loginSection');
-      hideSection('examSection');
-      hideSection('menuSection');
-      hideSection('reportSection');
-      hideSection('reviewSection');
-      hideSection('quizSection');
+      // 모든 섹션 숨기기
+      hideAllSections();
+
+      // 로그인 페이지 보여주기
+      document.getElementById('loginSection').classList.remove('hidden');
+
+      // “처음으로” 버튼 숨기기
       document.getElementById('homeButton').classList.add('hidden');
+
+      // 오류 메시지 초기화
       clearMessages();
     };
 
-    // 1) 로그인 단계
+    /****************************************************************************
+     * ① 로그인 단계
+     ****************************************************************************/
     document.getElementById('loginBtn').onclick = () => {
       const id = document.getElementById('loginId').value.trim();
       if (!id) {
-        return document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
+        document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
+        return;
       }
+
+      // API 호출: /api/authenticate? id=<입력값>
       fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
-        .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
+        .then(res => res.json().then(json => ({ ok: res.ok, ...json })))
         .then(data => {
           if (data.authenticated) {
             currentId = id;
+            // 로그인 섹션 숨기고
             document.getElementById('loginSection').classList.add('hidden');
+            // 회차 선택 섹션 보이기
             document.getElementById('examSection').classList.remove('hidden');
+            // “처음으로” 버튼은 로그인/메인 제외 페이지에서만 보이므로 숨김
             document.getElementById('homeButton').classList.add('hidden');
+            // 회차 목록 불러오기
             loadExams();
           } else {
             document.getElementById('loginMsg').textContent = '인증되지 않은 ID입니다';
@@ -181,20 +235,25 @@
         });
     };
 
-    // 2) 회차 목록 불러오기 & 회차 선택
+    /****************************************************************************
+     * ② 회차 목록 불러오기 & 회차 선택
+     ****************************************************************************/
     function loadExams() {
       fetch('/api/exams')
         .then(res => res.json())
         .then(exams => {
           const sel = document.getElementById('examSelect');
-          sel.innerHTML = '';
-          if (exams.length === 0) {
+          sel.innerHTML = '';  // 기존 옵션 제거
+
+          if (!Array.isArray(exams) || exams.length === 0) {
             sel.innerHTML = '<option>등록된 회차가 없습니다</option>';
             return;
           }
+
           exams.forEach(e => {
             const opt = document.createElement('option');
-            opt.value = e; opt.textContent = e;
+            opt.value = e;
+            opt.textContent = e;
             sel.appendChild(opt);
           });
         })
@@ -205,13 +264,21 @@
 
     document.getElementById('examBtn').onclick = () => {
       const exam = document.getElementById('examSelect').value;
+      if (!exam) {
+        document.getElementById('examMsg').textContent = '회차를 선택하세요';
+        return;
+      }
+
       fetch(`/api/check_exam?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`)
-        .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
+        .then(res => res.json().then(json => ({ ok: res.ok, ...json })))
         .then(data => {
           if (data.registered) {
             currentExam = exam;
+            // 회차 선택 페이지 숨기고
             document.getElementById('examSection').classList.add('hidden');
+            // 메뉴 페이지 보이기
             document.getElementById('menuSection').classList.remove('hidden');
+            // “처음으로” 버튼 보이기
             document.getElementById('homeButton').classList.remove('hidden');
           } else {
             document.getElementById('examMsg').textContent = data.error;
@@ -222,15 +289,24 @@
         });
     };
 
-    // 3) 메뉴 버튼 클릭
+    /****************************************************************************
+     * ③ 메뉴 버튼 클릭 시 동작
+     *  - 1) 내 성적표 확인
+     *  - 2) 틀린 문제 다시 풀기
+     *  - 3) 틀린 문제 O/X 퀴즈
+     ****************************************************************************/
     document.getElementById('menuReport').onclick = () => {
-      // “내 성적표 확인” → /api/reportcard?exam=&id= 호출
+      // “내 성적표 확인” → /api/reportcard?exam=<currentExam>&id=<currentId> 호출
       fetch(`/api/reportcard?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}`)
-        .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
+        .then(res => res.json().then(json => ({ ok: res.ok, ...json })))
         .then(data => {
+          // 모든 섹션 숨기고
           hideAllSections();
+          // 성적표 페이지 보이기
           document.getElementById('reportSection').classList.remove('hidden');
+          // “처음으로” 버튼 보이기
           document.getElementById('homeButton').classList.remove('hidden');
+
           if (data.url) {
             document.getElementById('reportImage').src = data.url;
             document.getElementById('reportMsg').textContent = '';
@@ -257,21 +333,16 @@
       document.getElementById('homeButton').classList.remove('hidden');
     };
 
-    // 공통 함수
+    /****************************************************************************
+     * 공통 유틸리티 함수
+     ****************************************************************************/
     function hideAllSections() {
       ['loginSection','examSection','menuSection','reportSection','reviewSection','quizSection']
         .forEach(id => document.getElementById(id).classList.add('hidden'));
     }
-    function showSection(id) {
-      document.getElementById(id).classList.remove('hidden');
-    }
-    function hideSection(id) {
-      document.getElementById(id).classList.add('hidden');
-    }
     function clearMessages() {
-      ['loginMsg','examMsg','menuMsg','reportMsg'].forEach(id => {
-        document.getElementById(id).textContent = '';
-      });
+      ['loginMsg','examMsg','menuMsg','reportMsg']
+        .forEach(id => document.getElementById(id).textContent = '');
     }
   </script>
 </body>

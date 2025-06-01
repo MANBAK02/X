@@ -1,9 +1,9 @@
 import os
 from pathlib import Path
-from flask import Flask, request, jsonify, send_from_directory, abort
+from flask import Flask, request, jsonify, send_from_directory
 import pandas as pd
 
-# ─── 기본 경로 설정 ─────────────────────────────────────────────
+# ─── 기본 경로 설정 ─────────────────────────────────
 BASE_DIR          = Path(__file__).parent.resolve()
 DATA_DIR          = BASE_DIR / 'data'
 STUDENT_LIST_PATH = DATA_DIR / 'student_list.csv'
@@ -11,60 +11,98 @@ FRONTEND_DIR      = BASE_DIR / 'frontend'
 
 app = Flask(
     __name__,
-    static_folder=str(FRONTEND_DIR),
-    static_url_path='/'
+    static_folder=str(FRONTEND_DIR),     # frontend 디렉터리를 정적 파일 루트로 사용
+    static_url_path='/'                   # “/” 경로로 접근 시 정적 파일을 제공
 )
 
-# ─── 로그인 가능한 ID 로드 ─────────────────────────────────────────────
-# student_list.csv에는 헤더 없이 첫 열에 리클래스ID만 쭉 나열된 형태라고 가정
-student_df = pd.read_csv(STUDENT_LIST_PATH, header=None, dtype=str)
-valid_ids  = set(student_df.iloc[:, 0].dropna().astype(str))
+# ─── 1) student_list.csv 에서 로그인 허용 ID 집합 로드 ────────────────
+# header=None 으로 읽어서 첫 번째 열 전체를 ID로 취급
+student_list_df = pd.read_csv(STUDENT_LIST_PATH, header=None, dtype=str)
+valid_ids = set(student_list_df.iloc[:, 0].dropna().astype(str))
 
 def authenticate(rid: str) -> bool:
+    """data/student_list.csv 첫 열에 있는 ID면 True, 아니면 False"""
     return rid in valid_ids
 
+# ─── 2) 각 시험별 ‘answer/’ 폴더를 읽어 시험 정보(회차) 로드 ────────────
+# exam_info: { 시험명: DataFrame(시험 회차별 정보 합쳐진) }
+exam_info: dict[str, pd.DataFrame] = {}
+for exam_dir in DATA_DIR.iterdir():
+    if not exam_dir.is_dir():
+        continue
+    # “answer” 폴더 하위의 모든 *.csv를 찾아서, 회차 정보 DataFrame으로 합칩니다.
+    answer_dir = exam_dir / 'answer'
+    if not answer_dir.is_dir():
+        # 만약 answer 폴더가 없으면 빈 DataFrame으로 두되, 회차 이름만 인식되도록 처리
+        exam_info[exam_dir.name] = pd.DataFrame()
+        continue
 
-# ─── 각 시험 회차별 “응시 가능 ID 집합” 생성 ─────────────────────────────
-#   - data/ 아래의 각 시험 폴더를 순회
-#   - 각 exam_dir/student_answer/ 아래 모든 CSV를 읽어서 reclass_id 생성
-#   - reclass_id = “이름” + “전화번호 끝 4자리” 형태로 저장
+    frames = []
+    for csv_path in answer_dir.rglob('*.csv'):
+        try:
+            df_tmp = pd.read_csv(csv_path, dtype=str)
+            frames.append(df_tmp)
+        except Exception:
+            # CSV 읽기 오류가 나면 해당 파일 무시
+            continue
+    if frames:
+        exam_info[exam_dir.name] = pd.concat(frames, ignore_index=True)
+    else:
+        exam_info[exam_dir.name] = pd.DataFrame()
+
+# ─── 3) 각 시험별 ‘student_answer/’ 폴더 하위에서 응시 ID 집합 생성 ─────────
 exam_ids: dict[str, set[str]] = {}
 for exam_dir in DATA_DIR.iterdir():
     if not exam_dir.is_dir():
         continue
 
-    student_ans_dir = exam_dir / 'student_answer'
-    if not student_ans_dir.exists() or not student_ans_dir.is_dir():
-        # student_answer가 없으면 응시자 없음으로 간주
-        exam_ids[exam_dir.name] = set()
-        continue
+    s_dir = exam_dir / 'student_answer'
+    ids = set()
+    if s_dir.is_dir():
+        # s_dir 하위 모든 *.csv 탐색
+        for csv_path in s_dir.rglob('*.csv'):
+            try:
+                raw = pd.read_csv(csv_path, dtype=str)
+            except Exception:
+                continue
 
-    ids: set[str] = set()
-    # student_answer/ 밑의 모든 CSV 파일을 재귀적으로 읽어서 reclass_id 생성
-    for csv_path in student_ans_dir.rglob('*.csv'):
-        raw = pd.read_csv(csv_path, dtype=str)
-        # CSV에 ‘이름’과 ‘전화번호’ 컬럼이 있다고 가정
-        if '이름' in raw.columns and '전화번호' in raw.columns:
-            df = raw.copy()
-            df['phone4']     = df['전화번호'].str[-4:]
-            df['reclass_id'] = df['이름'] + df['phone4']
-            ids.update(df['reclass_id'].dropna().astype(str))
+            # ① 컬럼명이 '성명'인지, 그렇지 않으면 첫 번째 컬럼을 이름으로 사용
+            if '성명' in raw.columns:
+                name_col = '성명'
+            else:
+                name_col = raw.columns[0]
+
+            # ② 컬럼명이 '전화번호'인지, 그렇지 않으면 두 번째 컬럼을 전화번호로 사용
+            if '전화번호' in raw.columns:
+                phone_col = '전화번호'
+            else:
+                phone_col = raw.columns[1]
+
+            # 전화번호 끝 4자리 추출
+            # (이미 “010-1234-7860”처럼 하이픈이 포함돼 있더라도 마지막 4글자는 추출됨)
+            raw['phone4'] = raw[phone_col].astype(str).str.replace(r'\D', '', regex=True).str[-4:]
+            # reclass_id = “이름” + “phone4”
+            raw['reclass_id'] = raw[name_col].astype(str) + raw['phone4']
+
+            ids.update(raw['reclass_id'].dropna().astype(str))
+    # 시험명: 응시 ID 집합
     exam_ids[exam_dir.name] = ids
 
-
-# ─── 1) 첫 화면: index.html 서빙 ────────────────────────────────────────
+# ─── 4) 라우팅 정의 ───────────────────────────────────────
 @app.route('/')
 def index():
-    # 로그인 페이지를 포함한 모든 뷰를 index.html 하나로 제어
+    """
+    정적 파일(frontend/index.html)을 제공.
+    이게 로그인 페이지 역할을 함.
+    """
     return send_from_directory(str(FRONTEND_DIR), 'index.html')
 
-
-# ─── 2) 로그인 인증 API ────────────────────────────────────────────────
 @app.route('/api/authenticate')
 def api_authenticate():
     """
-    GET /api/authenticate?id=<리클래스ID>
-    → valid_ids 집합에 있는지 확인
+    로그인용 API.
+    쿼리스트링으로 ?id=<리클래스ID>를 받음.
+    student_list.csv에 ID가 있으면 {authenticated: true}, 아니면 401 반환.
     """
     rid = request.args.get('id', '').strip()
     if not rid:
@@ -73,27 +111,20 @@ def api_authenticate():
     ok = authenticate(rid)
     return jsonify({'authenticated': ok}), (200 if ok else 401)
 
-
-# ─── 3) 시험 회차 목록 가져오기 API ─────────────────────────────────────
 @app.route('/api/exams')
 def api_exams():
     """
-    GET /api/exams
-    → data/ 아래에 있는 모든 “student_answer” 폴더가 존재하는 디렉터리 이름을 반환
+    메인 페이지에서 회차(시험명) 목록을 가져갈 때 사용하는 API.
+    data/ 디렉터리 바로 아래에 있는 모든 폴더 이름을 회차로 반환.
     """
-    exams = []
-    for d in DATA_DIR.iterdir():
-        if d.is_dir() and (d / 'student_answer').exists():
-            exams.append(d.name)
+    exams = [d.name for d in DATA_DIR.iterdir() if d.is_dir()]
     return jsonify(exams)
 
-
-# ─── 4) 해당 시험 회차에 현재 ID가 응시했는지 확인 API ─────────────────────
 @app.route('/api/check_exam')
 def api_check_exam():
     """
-    GET /api/check_exam?exam=<examName>&id=<리클래스ID>
-    → exam_ids[examName] 집합에 id가 있는지 확인
+    사용자가 선택한 시험 회차와 로그인 ID를 넘겨서, 실제 응시 정보가 있는지 확인.
+    쿼리스트링: ?exam=<시험명>&id=<리클래스ID>
     """
     exam = request.args.get('exam', '').strip()
     rid  = request.args.get('id', '').strip()
@@ -104,49 +135,37 @@ def api_check_exam():
         return jsonify({'error': 'Unknown exam'}), 404
 
     registered = rid in exam_ids[exam]
-    status     = 200 if registered else 404
     return jsonify({
         'registered': registered,
-        'error':      None if registered else '해당 모의고사의 응시 정보가 없습니다.'
-    }), status
+        'error': None if registered else '해당 모의고사의 응시 정보가 없습니다.'
+    }), (200 if registered else 404)
 
-
-# ─── 5) 성적표 URL 반환 API ────────────────────────────────────────────
-@app.route('/api/reportcard')
-def api_reportcard():
+@app.route('/report_card/<exam>/<rid>')
+def serve_report_card(exam: str, rid: str):
     """
-    GET /api/reportcard?exam=<examName>&id=<리클래스ID>
-    → data/<examName>/report card/ 하위에서 “<리클래스ID>_…_성적표.png”를 찾아 URL 반환
+    “성적표 확인” 기능을 위해, report card 폴더에서 해당 학생의 PNG를 찾아주는 예시 라우트.
+    예를 들어:
+      GET /report_card/Spurt 모의고사 08회/홍길동7860
+    라고 요청하면,
+      data/Spurt 모의고사 08회/report card/ 폴더 내에 “홍길동7860_*.png” 형태를 찾아서 리턴.
+    실제 정적 제공이 필요하면 send_from_directory를 쓰면 됩니다.
     """
-    exam = request.args.get('exam', '').strip()
-    rid  = request.args.get('id', '').strip()
-    if not exam or not rid:
-        return jsonify({'error': 'Missing parameters'}), 400
-
     exam_dir = DATA_DIR / exam / 'report card'
-    if not exam_dir.exists() or not exam_dir.is_dir():
+    if not exam_dir.is_dir():
         return jsonify({'error': 'Report card 폴더가 없습니다.'}), 404
 
-    # report card 폴더 안의 모든 PNG를 재귀 검색하여, 파일명에 rid가 포함된 첫 번째를 찾음
-    for png_path in exam_dir.rglob('*.png'):
-        if rid in png_path.name:
-            # 웹에서 접근할 상대 경로를 만들어서 반환
-            rel = png_path.relative_to(BASE_DIR)
-            return jsonify({'url': '/' + str(rel).replace('\\','/')}), 200
+    # 해당 리클래스 ID가 들어간 파일 검색
+    matches = list(exam_dir.rglob(f"{rid}*.png"))
+    if not matches:
+        return jsonify({'error': 'Report card 파일을 찾을 수 없습니다.'}), 404
 
-    return jsonify({'error': 'Report card 파일을 찾을 수 없습니다.'}), 404
+    # 첫 번째 결과를 리턴(여러 개라면 첫 번째만)
+    file_path = matches[0]
+    return send_from_directory(str(file_path.parent), file_path.name)
 
-
-# ─── 6) 실제 성적표 이미지 서빙 라우트 ───────────────────────────────────
-@app.route('/reportcard_file/<path:subpath>')
-def reportcard_file(subpath):
-    fullpath = BASE_DIR / subpath
-    if not fullpath.exists():
-        abort(404)
-    return send_from_directory(str(fullpath.parent), fullpath.name)
-
-
-# ─── 7) 앱 실행 설정 ────────────────────────────────────────────────────
+# ─── 5) 앱 실행 ─────────────────────────────────────────
 if __name__ == '__main__':
+    # Railway 등에서는 Start Command를 “waitress-serve --port $PORT app:app”으로 설정하므로
+    # 아래 코드는 로컬 개발 환경에서만 Flask 내장 서버 실행용으로 남겨둡니다.
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
