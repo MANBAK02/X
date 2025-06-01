@@ -3,105 +3,103 @@ from pathlib import Path
 from flask import Flask, request, jsonify, send_from_directory, abort
 import pandas as pd
 
-app = Flask(__name__, static_folder='frontend', static_url_path='/')
-
-
-# ─── 기본 경로 설정 ─────────────────────────────────────────────────────────
+# ─── 기본 경로 설정 ─────────────────────────────────────────────
 BASE_DIR          = Path(__file__).parent.resolve()
 DATA_DIR          = BASE_DIR / 'data'
 STUDENT_LIST_PATH = DATA_DIR / 'student_list.csv'
 FRONTEND_DIR      = BASE_DIR / 'frontend'
 
+app = Flask(
+    __name__,
+    static_folder=str(FRONTEND_DIR),
+    static_url_path='/'
+)
 
-# ─── 1) student_list.csv 에서 로그인 허용 ID 집합 로드 ─────────────────────────────
-try:
-    # header=None → 첫 열 전체를 ID 목록으로 취급
-    student_df = pd.read_csv(STUDENT_LIST_PATH, header=None, dtype=str)
-    valid_ids  = set(student_df.iloc[:, 0].dropna().astype(str))
-except Exception:
-    valid_ids = set()
+# ─── 로그인 가능한 ID 로드 ─────────────────────────────────────────────
+# student_list.csv에는 헤더 없이 첫 열에 리클래스ID만 쭉 나열된 형태라고 가정
+student_df = pd.read_csv(STUDENT_LIST_PATH, header=None, dtype=str)
+valid_ids  = set(student_df.iloc[:, 0].dropna().astype(str))
 
 def authenticate(rid: str) -> bool:
-    """ student_list.csv 첫 열에 있는 ID면 True """
     return rid in valid_ids
 
 
-# ─── 2) 각 시험 폴더 안의 answer/ 하위 모든 CSV를 읽어 응시 가능한 ID 집합 생성 ────
-exam_ids = {}    # { exam_name: {rid1, rid2, ...}, ... }
-exam_files = {}  # { exam_name: [Path1, Path2, ...] } → answer/ 밑 CSV 목록
-
+# ─── 각 시험 회차별 “응시 가능 ID 집합” 생성 ─────────────────────────────
+#   - data/ 아래의 각 시험 폴더를 순회
+#   - 각 exam_dir/student_answer/ 아래 모든 CSV를 읽어서 reclass_id 생성
+#   - reclass_id = “이름” + “전화번호 끝 4자리” 형태로 저장
+exam_ids: dict[str, set[str]] = {}
 for exam_dir in DATA_DIR.iterdir():
     if not exam_dir.is_dir():
         continue
 
-    answer_dir = exam_dir / 'answer'   # “answer” 폴더로 간주
-    if not answer_dir.exists() or not answer_dir.is_dir():
-        # answer/ 폴더가 없으면 회차로 인정하지 않음
+    student_ans_dir = exam_dir / 'student_answer'
+    if not student_ans_dir.exists() or not student_ans_dir.is_dir():
+        # student_answer가 없으면 응시자 없음으로 간주
+        exam_ids[exam_dir.name] = set()
         continue
 
-    # answer/ 폴더 하위의 모든 CSV 파일 경로 수집
-    csv_list = list(answer_dir.rglob('*.csv'))
-    if not csv_list:
-        # CSV 파일이 하나도 없으면 회차로 인정하지 않음
-        continue
-
-    # exam_files에 저장 (향후 문제 메타 데이터로 사용 가능)
-    exam_files[exam_dir.name] = csv_list
-
-    # 응시 가능한 ID 집합 생성 (이름+전화끝4자리 OR 첫 번째 컬럼 자체가 reclass_id)
-    ids = set()
-    for csv_path in csv_list:
-        try:
-            df = pd.read_csv(csv_path, dtype=str)
-        except Exception:
-            continue
-
-        # “이름”과 “전화번호” 칼럼이 있으면 → reclass_id = 이름 + 전화끝4
-        if '이름' in df.columns and '전화번호' in df.columns:
-            names  = df['이름'].astype(str)
-            phones = df['전화번호'].astype(str).str[-4:]
-            temp_ids = (names + phones).tolist()
-            ids.update(temp_ids)
-        else:
-            # “이름/전화번호” 칼럼 조합이 없으면 → 첫 번째 컬럼을 ID로 간주
-            ids.update(df.iloc[:, 0].dropna().astype(str).tolist())
-
+    ids: set[str] = set()
+    # student_answer/ 밑의 모든 CSV 파일을 재귀적으로 읽어서 reclass_id 생성
+    for csv_path in student_ans_dir.rglob('*.csv'):
+        raw = pd.read_csv(csv_path, dtype=str)
+        # CSV에 ‘이름’과 ‘전화번호’ 컬럼이 있다고 가정
+        if '이름' in raw.columns and '전화번호' in raw.columns:
+            df = raw.copy()
+            df['phone4']     = df['전화번호'].str[-4:]
+            df['reclass_id'] = df['이름'] + df['phone4']
+            ids.update(df['reclass_id'].dropna().astype(str))
     exam_ids[exam_dir.name] = ids
 
 
-# ─── 3) 라우팅 ────────────────────────────────────────────────────────────────
-
+# ─── 1) 첫 화면: index.html 서빙 ────────────────────────────────────────
 @app.route('/')
 def index():
+    # 로그인 페이지를 포함한 모든 뷰를 index.html 하나로 제어
     return send_from_directory(str(FRONTEND_DIR), 'index.html')
 
 
+# ─── 2) 로그인 인증 API ────────────────────────────────────────────────
 @app.route('/api/authenticate')
 def api_authenticate():
+    """
+    GET /api/authenticate?id=<리클래스ID>
+    → valid_ids 집합에 있는지 확인
+    """
     rid = request.args.get('id', '').strip()
     if not rid:
         return jsonify({'error': 'Missing id parameter'}), 400
+
     ok = authenticate(rid)
     return jsonify({'authenticated': ok}), (200 if ok else 401)
 
 
+# ─── 3) 시험 회차 목록 가져오기 API ─────────────────────────────────────
 @app.route('/api/exams')
 def api_exams():
     """
-    data/ 폴더 아래,
-    ‒ “answer” 폴더가 존재하고
-    ‒ 그 안에 *.csv 파일이 한 개 이상 있어야 하는
-    시험 디렉터리 이름 목록을 반환
+    GET /api/exams
+    → data/ 아래에 있는 모든 “student_answer” 폴더가 존재하는 디렉터리 이름을 반환
     """
-    return jsonify(list(exam_ids.keys()))
+    exams = []
+    for d in DATA_DIR.iterdir():
+        if d.is_dir() and (d / 'student_answer').exists():
+            exams.append(d.name)
+    return jsonify(exams)
 
 
+# ─── 4) 해당 시험 회차에 현재 ID가 응시했는지 확인 API ─────────────────────
 @app.route('/api/check_exam')
 def api_check_exam():
+    """
+    GET /api/check_exam?exam=<examName>&id=<리클래스ID>
+    → exam_ids[examName] 집합에 id가 있는지 확인
+    """
     exam = request.args.get('exam', '').strip()
     rid  = request.args.get('id', '').strip()
     if not exam or not rid:
         return jsonify({'error': 'Missing parameters'}), 400
+
     if exam not in exam_ids:
         return jsonify({'error': 'Unknown exam'}), 404
 
@@ -113,96 +111,42 @@ def api_check_exam():
     }), status
 
 
-# ─── 4) /report 라우트: “report card” 폴더에서 학생 성적표 이미지만 엄격 매칭 ───────
-@app.route('/report')
-def report_view():
+# ─── 5) 성적표 URL 반환 API ────────────────────────────────────────────
+@app.route('/api/reportcard')
+def api_reportcard():
+    """
+    GET /api/reportcard?exam=<examName>&id=<리클래스ID>
+    → data/<examName>/report card/ 하위에서 “<리클래스ID>_…_성적표.png”를 찾아 URL 반환
+    """
     exam = request.args.get('exam', '').strip()
     rid  = request.args.get('id', '').strip()
     if not exam or not rid:
-        return abort(400, description="Missing parameters")
+        return jsonify({'error': 'Missing parameters'}), 400
 
-    # report card 폴더 경로
-    report_root = DATA_DIR / exam / 'report card'
-    if not report_root.exists() or not report_root.is_dir():
-        return abort(404, description="Report card 폴더가 없습니다.")
+    exam_dir = DATA_DIR / exam / 'report card'
+    if not exam_dir.exists() or not exam_dir.is_dir():
+        return jsonify({'error': 'Report card 폴더가 없습니다.'}), 404
 
-    # 파일명 패턴: "{rid}_{exam}_…_성적표.png" → 엄격 매칭
-    pattern_prefix = f"{rid}_{exam}_"
-    matched_file = None
+    # report card 폴더 안의 모든 PNG를 재귀 검색하여, 파일명에 rid가 포함된 첫 번째를 찾음
+    for png_path in exam_dir.rglob('*.png'):
+        if rid in png_path.name:
+            # 웹에서 접근할 상대 경로를 만들어서 반환
+            rel = png_path.relative_to(BASE_DIR)
+            return jsonify({'url': '/' + str(rel).replace('\\','/')}), 200
 
-    for png_path in report_root.rglob('*.png'):
-        fname = png_path.name
-        if fname.startswith(pattern_prefix) and fname.endswith('_성적표.png'):
-            matched_file = png_path
-            break
-
-    if not matched_file:
-        return abort(404, description="Report not found")
-
-    # HTML 템플릿으로 렌더링 (서브 페이지에도 홈 버튼 포함)
-    rel_path = matched_file.relative_to(BASE_DIR)  
-    html = f"""
-    <!DOCTYPE html>
-    <html lang='ko'>
-    <head>
-      <meta charset='utf-8'>
-      <meta name='viewport' content='width=device-width, initial-scale=1'>
-      <title>내 성적표</title>
-      <style>
-        body {{
-          margin: 0; padding: 1rem;
-          font-family: sans-serif; background: #f9f9f9;
-        }}
-        .container {{
-          max-width: 600px; width: 100%;
-          margin: 0 auto; background: white;
-          padding: 2rem; min-height: 800px;
-          border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-          position: relative;
-        }}
-        .home-btn {{
-          position: absolute; top: 1rem; left: 1rem;
-          display: flex; align-items: center;
-          text-decoration: none; color: #333; font-size: 1rem;
-        }}
-        .home-btn img {{
-          width: 16px; height: 16px; margin-right: 0.25rem;
-        }}
-        .report-img {{
-          display: block; max-width: 100%;
-          height: auto; margin: 2rem auto;
-        }}
-      </style>
-    </head>
-    <body>
-      <div class='container'>
-        <!-- 서브 페이지에서도 홈 버튼 보이기 -->
-        <a href='/' class='home-btn'>
-          <img src='/icons/home.svg' alt='Home Icon'>
-          <span>처음으로</span>
-        </a>
-        <h1>내 성적표</h1>
-        <img src='/{rel_path.as_posix()}' alt='Report Card' class='report-img'>
-      </div>
-    </body>
-    </html>
-    """
-    return html
+    return jsonify({'error': 'Report card 파일을 찾을 수 없습니다.'}), 404
 
 
-# ─── 5) 정적 파일 제공: icons 및 data 경로 ─────────────────────────────────────
-@app.route('/icons/<path:filename>')
-def serve_icon(filename):
-    return send_from_directory(str(FRONTEND_DIR / 'icons'), filename)
-
-@app.route('/data/<path:filename>')
-def serve_data_files(filename):
-    # report HTML이 img src='data/...png' 형태로 요청할 때 사용
-    return send_from_directory(str(BASE_DIR), filename)
+# ─── 6) 실제 성적표 이미지 서빙 라우트 ───────────────────────────────────
+@app.route('/reportcard_file/<path:subpath>')
+def reportcard_file(subpath):
+    fullpath = BASE_DIR / subpath
+    if not fullpath.exists():
+        abort(404)
+    return send_from_directory(str(fullpath.parent), fullpath.name)
 
 
-# ─── 6) 앱 실행 (Waitress WSGI 서버) ─────────────────────────────────────────
+# ─── 7) 앱 실행 설정 ────────────────────────────────────────────────────
 if __name__ == '__main__':
-    import waitress
     port = int(os.environ.get('PORT', 5000))
-    waitress.serve(app, host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port)
