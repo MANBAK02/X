@@ -56,7 +56,7 @@ for exam_dir in DATA_DIR.iterdir():
 
     if ids_for_this_exam:
         exam_ids[exam_dir.name] = ids_for_this_exam
-        print(f"[DEBUG] Exam '{exam_dir.name}' → 응시자 리클래스 ID: {sorted(ids_for_this_exam)}")
+        print(f"[DEBUG] Exam '{exam_dir.name}' → 응시자 리클래스 ID: {len(ids_for_this_exam)}개")
     else:
         print(f"[DEBUG] Exam '{exam_dir.name}' → student_answer 폴더가 없거나, ID 생성 불가")
 
@@ -103,16 +103,20 @@ def api_reportcard():
 
     # report card 하위에 반별 폴더가 있고 그 안에 PNG가 있는 경우 재귀 탐색
     for img_path in report_dir.rglob(f'*{user_id}*.png'):
-        filename = img_path.name
-        url = f'/report/{exam}/{filename}'
+        # report_dir 기준으로 상대 경로를 뽑아두고
+        rel_path = img_path.relative_to(report_dir)
+        # URL 상으로는 하위 폴더 구조까지 포함해서 클라이언트에 알려준다
+        url = f'/report/{exam}/{rel_path.as_posix()}'
         return jsonify(url=url)
 
     return jsonify(error='성적표를 찾을 수 없습니다.')
 
-@app.route('/report/<exam>/<filename>')
-def send_report(exam, filename):
+# “/report/<exam>/<path:...>”를 받아서 report card 하위 디렉터리로 매핑
+@app.route('/report/<exam>/<path:subpath>')
+def send_report(exam, subpath):
     report_folder = DATA_DIR / exam / 'report card'
-    return send_from_directory(report_folder, filename)
+    # subpath가 e.g. "한반/강민엽1553_성적표.png" 형태로 들어온다.
+    return send_from_directory(report_folder, subpath)
 
 # ┌───────────────────────────────────────────────────
 # │ 4) SPA 정적 파일 서빙
