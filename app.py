@@ -13,12 +13,6 @@ app = Flask(
 # ┌───────────────────────────────────────────────────────────────
 # │ 1) student_list.csv 로부터 “인증용 ID(리클래스 ID)” 집합을 미리 생성
 # └───────────────────────────────────────────────────────────────
-#
-# student_list.csv 안에 “이름” 열과 “전화번호” (010 제외한 8자리) 열이 있을 때,
-#   리클래스 ID = 이름 + 전화번호 뒤 4자리
-# 라는 규칙으로 만든 뒤 set()에 담아두면,
-# 로그인 시( /api/authenticate ) 이 집합을 참조해 인증 여부를 판단할 수 있다.
-
 STUDENT_CSV_PATH = Path('data') / 'student_list.csv'
 valid_ids = set()
 
@@ -30,13 +24,13 @@ if STUDENT_CSV_PATH.exists():
             name = str(row['이름']).strip()
             phone8 = str(row['전화번호']).strip()  # “010” 뺀 8자리
             if len(phone8) >= 4:
-                # 뒤 4자리를 잘라서 이름 뒤에 붙이면 리클래스 ID
                 reclass_id = name + phone8[-4:]
                 valid_ids.add(reclass_id)
     else:
         # 만약 “리클래스ID” 라는 별도 컬럼이 이미 존재한다면…
         if '리클래스ID' in df_students.columns:
-            valid_ids = set(df_students['리클래스ID'].dropna().astype(str).str.strip())
+            valid_ids = set(df_students['리클래스ID']
+                            .dropna().astype(str).str.strip())
 
     print(f"[DEBUG] 인증 가능한 ID 총 {len(valid_ids)}개 로드됨.")
 
@@ -45,22 +39,6 @@ if STUDENT_CSV_PATH.exists():
 # │ 2) data/ 폴더 밑에 있는 각 시험(예: Spurt 모의고사 07회 등) 디렉터리를 읽어서
 # │    해당 시험에 응시한 리클래스 ID 집합을 미리 생성
 # └───────────────────────────────────────────────────────────────
-#
-#  예시 디렉터리 구조:
-#    data/
-#    ├─ Spurt 모의고사 07회/
-#    │   ├─ student_answer/      ← 이제 이 폴더만 스캔해서 “이름+뒤4자리” ID 생성
-#    │   │    ├─ 홍길동.csv       (1열: 이름, 2열: 전화번호 8자리)
-#    │   │    └─ 김민수.csv
-#    │   └─ report card/         
-#    │        ├─ 홍길동_07회_성적표.png
-#    │        └─ 김민수_07회_성적표.png
-#    └─ Spurt 모의고사 08회/
-#        ├─ student_answer/
-#        │    └─ (응시생 CSV...)
-#        └─ report card/
-#             └─ (성적표 이미지들)
-#
 DATA_DIR = Path('data')
 exam_ids = {}   # { 'Spurt 모의고사 07회': { '홍길동5678', '김민수1234', … }, … }
 
@@ -68,11 +46,10 @@ for exam_dir in DATA_DIR.iterdir():
     if not exam_dir.is_dir():
         continue
 
-    # “시험 폴더” 바로 아래 student_answer/ 폴더만 탐색
     ids = set()
     ans_dir = exam_dir / 'student_answer'
     if ans_dir.is_dir():
-        # 폴더가 존재하면 안쪽의 모든 .csv 파일을 읽어서 ID를 조합
+        # student_answer 폴더 안의 모든 .csv 파일을 읽어서 ID를 조합
         for csv_path in ans_dir.glob('*.csv'):
             try:
                 df = pd.read_csv(csv_path, dtype=str)  # 첫 줄을 헤더로 인식
@@ -81,8 +58,6 @@ for exam_dir in DATA_DIR.iterdir():
                 continue
 
             # “1열: 이름” + “2열: 전화번호(8자리, 010 제외)” 로 ID 조합
-            # 만약 헤더가 “이름”, “전화번호”라는 컬럼명으로 되어 있으면 그걸 쓰고,
-            # 아니라면 iloc로 첫 번째/두 번째 열을 사용하도록 한다.
             if '이름' in df.columns and '전화번호' in df.columns:
                 for _, row in df.iterrows():
                     name = str(row['이름']).strip()
@@ -91,7 +66,7 @@ for exam_dir in DATA_DIR.iterdir():
                         reclass = name + phone8[-4:]
                         ids.add(reclass)
             else:
-                # 컬럼명이 없을 때(헤더 없음), 첫 번째 열이 이름, 두 번째 열이 전화번호(8자리)라는 가정
+                # 헤더가 없거나 컬럼명이 다를 때, 첫 번째 열이 이름, 두 번째 열이 전화번호라는 가정
                 for _, row in df.iterrows():
                     name = str(row.iloc[0]).strip()
                     phone8 = str(row.iloc[1]).strip() if len(row) > 1 else ''
@@ -153,7 +128,7 @@ def api_reportcard():
     “내 성적표 확인” 버튼 클릭 시 호출.
     /api/reportcard?exam=Spurt 모의고사 07회&id=홍길동5678
     → data/Spurt 모의고사 07회/report card/ 폴더 아래에서
-      파일 이름에 “홍길동5678”이 포함된 .png 파일(혹은 .jpg 등)을 재귀 탐색하여 URL로 반환
+      파일 이름에 “홍길동5678”이 포함된 .png 파일을 재귀 탐색하여 URL로 반환
     """
     user_id = request.args.get('id', '').strip()
     exam = request.args.get('exam', '').strip()
@@ -172,7 +147,6 @@ def api_reportcard():
     #    “파일명에 user_id 가 포함된 .png”를 찾는다.
     for img_path in report_dir.rglob(f'*{user_id}*.png'):
         # 클라이언트가 접근할 수 있는 정적 URL 경로를 만들어서 돌려줌
-        # (예: "/data/Spurt 모의고사 07회/report card/홍길동5678_07회_성적표.png")
         rel_path = img_path.relative_to(Path.cwd())
         url = '/' + str(rel_path).replace(os.path.sep, '/')
         return jsonify(url=url)
@@ -187,11 +161,15 @@ def api_reportcard():
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_frontend(path):
-    # 요청된 파일이 frontend 디렉터리에 있으면 그대로 서빙, 아니면 index.html
-    requested = (app.static_folder / path)
+    # app.static_folder 는 문자열이므로, Path로 변환해서 써야 합니다.
+    static_dir = Path(app.static_folder)
+
+    requested = static_dir / path
     if path != "" and requested.exists():
+        # 예: /favicon.ico 같은 정적 리소스가 있으면 바로 서빙
         return send_from_directory(app.static_folder, path)
     else:
+        # 그 외에는 항상 index.html (SPA) 리턴
         return send_from_directory(app.static_folder, 'index.html')
 
 
