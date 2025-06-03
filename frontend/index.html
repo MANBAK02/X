@@ -20,7 +20,7 @@
       padding: 1rem;
       border-radius: 8px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      /* 세로 길이를 늘리기 위해 padding-bottom 여분 추가 */
+      /* 세로 길이를 충분히 확보하기 위해 padding-bottom을 늘림 */
       padding-bottom: 3rem;
     }
     h1 {
@@ -64,7 +64,7 @@
       font-size: 0.9rem;
       margin: 0.25rem 0 0;
     }
-    /* 메뉴 버튼 */
+    /* 메뉴 버튼 스타일 */
     .menu-button {
       background: #28a745;
       margin-bottom: 0.75rem;
@@ -73,6 +73,7 @@
     }
     .menu-button:nth-child(2) { background: #ffc107; }
     .menu-button:nth-child(3) { background: #dc3545; }
+
     /* 리포트 카드 이미지 */
     .report-img {
       display: block;
@@ -145,15 +146,10 @@
     let currentId = '';
     let currentExam = '';
 
-    // “처음으로” 버튼 클릭 → 로그인 페이지로 돌아가기
+    // “처음으로” 버튼 클릭 → 메뉴 페이지로 돌아가기
     document.getElementById('homeButton').onclick = () => {
-      showSection('loginSection');
-      hideSection('examSection');
-      hideSection('menuSection');
-      hideSection('reportSection');
-      hideSection('reviewSection');
-      hideSection('quizSection');
-      document.getElementById('homeButton').classList.add('hidden');
+      hideAllSections();
+      document.getElementById('menuSection').classList.remove('hidden');
       clearMessages();
     };
 
@@ -224,7 +220,6 @@
 
     // 3) 메뉴 버튼 클릭
     document.getElementById('menuReport').onclick = () => {
-      // “내 성적표 확인” → /api/reportcard?exam=&id= 호출
       fetch(`/api/reportcard?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}`)
         .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
         .then(data => {
