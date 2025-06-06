@@ -1,467 +1,384 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <!-- 모바일 퍼스트 뷰포트 -->
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+import os
+import json
+import glob
+import pandas as pd
+from flask import (
+    Flask,
+    request,
+    jsonify,
+    send_file,
+    abort
+)
 
-  <title>GAIA 모의고사 복습 사이트</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 1rem;
-      font-family: sans-serif;
-      background: #f9f9f9;
-    }
-    .container {
-      max-width: 400px;
-      margin: 0 auto;
-      background: white;
-      padding: 1rem;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    }
-    h1 {
-      margin: 0 0 0.5rem;
-      font-size: 1.5rem; /* 제목을 좀 더 키움 */
-      text-align: center;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .home-button {
-      display: flex;
-      align-items: center;
-      cursor: pointer;
-      margin-bottom: 1rem;
-      font-size: 16px;
-      color: #007bff;
-    }
-    .home-button img {
-      width: 16px;
-      height: 16px;
-      margin-right: 0.25rem;
-    }
-    input, select, button {
-      display: block;
-      width: 100%;
-      padding: 0.75rem;
-      font-size: 1rem;
-      margin: 0.5rem 0;
-      box-sizing: border-box;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    button {
-      background: #007bff;
-      color: white;
-      border: none;
-    }
-    p.error {
-      color: #d00;
-      font-size: 0.9rem;
-      margin: 0.25rem 0 0;
-    }
-    /* 메뉴 버튼 */
-    .menu-button {
-      background: #28a745;
-      margin-bottom: 0.75rem;
-      color: white;
-      font-size: 1rem;
-    }
-    .menu-button:nth-child(2) { background: #ffc107; }
-    .menu-button:nth-child(3) { background: #dc3545; }
+app = Flask(
+    __name__,
+    static_folder="static",       # 정적 파일(이미지, CSS, JS 등)은 /static 밑에서 제공
+    static_url_path="/static"
+)
 
-    /* 리포트 카드 이미지 */
-    .report-img {
-      display: block;
-      max-width: 100%;
-      margin: 0 auto;
-    }
+# ===============================================
+# 설정 (적절하게 경로를 프로젝트 상황에 맞게 수정하세요)
+# ===============================================
 
-    /* GIF (로그인/메인 페이지 상단 로고) */
-    .top-gif {
-      display: block;
-      width: 60%;
-      max-width: 200px;
-      margin: 0 auto 1rem;
-    }
+# “student_list.csv” 파일 경로 (프로젝트 루트에 있다고 가정)
+STUDENT_LIST_CSV = os.path.join(os.getcwd(), "student_list.csv")
 
-    /* 문제 이미지 */
-    .question-img {
-      display: block;
-      max-width: 100%;
-      margin: 0.5rem auto;
-    }
+# 모든 시험(회차) 폴더가 들어 있는 상위 디렉터리
+EXAMS_DIR = os.path.join(os.getcwd(), "exams")
+# └─ exams/
+#      └─ Spurt 모의고사 05회/
+#          ├─ answer/A.csv
+#          ├─ student_answer/class1.csv, class2.csv, …
+#          └─ report card/class1/…png, class2/…png
 
-    /* 각 섹션 숨김/보이기 */
-    .hidden { display: none; }
-    .option-label {
-      display: block;
-      margin: 0.25rem 0;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <!-- “처음으로” 버튼 (로그인/메인 제외 나머지 페이지에서만 보이도록 JS가 제어) -->
-    <div id="homeButton" class="home-button hidden">
-      <img src="/static/icons/home.png" alt="Home 아이콘" />
-      <span>처음으로</span>
-    </div>
 
-    <!-- ① 로그인 페이지 -->
-    <div id="loginSection">
-      <h1>GAIA 모의고사 복습 사이트</h1>
-      <img src="/static/globe.gif" alt="Globe 로고" class="top-gif" />
-      <input type="text" id="loginId" placeholder="리클래스 ID 입력" />
-      <button id="loginBtn">로그인</button>
-      <p id="loginMsg" class="error"></p>
-    </div>
+# ===============================================
+#  Utility 함수들
+# ===============================================
 
-    <!-- ② 회차 선택 페이지 -->
-    <div id="examSection" class="hidden">
-      <h1>GAIA 모의고사 복습 사이트</h1>
-      <select id="examSelect"></select>
-      <button id="examBtn">회차 선택</button>
-      <p id="examMsg" class="error"></p>
-    </div>
+def load_valid_ids():
+    """
+    student_list.csv 를 읽어서, 로그인 가능한 리클래스ID 목록을 반환.
+    첫 번째 열이 “리클래스ID”라고 가정.
+    """
+    if not os.path.isfile(STUDENT_LIST_CSV):
+        return []
+    df = pd.read_csv(STUDENT_LIST_CSV, header=None, dtype=str)
+    valid_ids = df.iloc[:, 0].astype(str).str.strip().tolist()
+    return valid_ids
 
-    <!-- ③ 메뉴 페이지 (1. 내 성적표 / 2. 틀린 문제 다시 풀기 / 3. 틀린 문제 OX 퀴즈) -->
-    <div id="menuSection" class="hidden">
-      <h1>GAIA 모의고사 복습 사이트</h1>
-      <button class="menu-button" id="menuReport">1. 내 성적표 확인</button>
-      <button class="menu-button" id="menuReview">2. 틀린 문제 다시 풀기</button>
-      <button class="menu-button" id="menuQuiz">3. 틀린 문제 O/X 퀴즈</button>
-      <p id="menuMsg" class="error"></p>
-    </div>
 
-    <!-- ④ 성적표 표시 페이지 -->
-    <div id="reportSection" class="hidden">
-      <h1>내 성적표</h1>
-      <img id="reportImage" class="report-img" alt="성적표 이미지" />
-      <p id="reportMsg" class="error"></p>
-    </div>
+def list_all_exams():
+    """
+    EXAMS_DIR 밑에서, “시험 이름” 폴더(디렉터리) 목록을 반환.
+    └─ exams/Spurt 모의고사 05회/, Spurt 모의고사 06회/, …
+    """
+    if not os.path.isdir(EXAMS_DIR):
+        return []
+    items = []
+    for name in os.listdir(EXAMS_DIR):
+        full = os.path.join(EXAMS_DIR, name)
+        if os.path.isdir(full):
+            items.append(name)
+    # 이름순 정렬
+    return sorted(items)
 
-    <!-- ⑤ 틀린 문제 다시 풀기 페이지 -->
-    <div id="reviewSection" class="hidden">
-      <h1>틀린 문제 다시 풀기</h1>
-      <p id="reviewMsg" class="error"></p>
-      <!-- 문제 표시 영역 -->
-      <div id="questionContainer" class="hidden">
-        <img id="questionImage" class="question-img" alt="문제 이미지" />
-        <div id="optionsContainer">
-          <!-- 옵션 1~5번 라디오 버튼으로 동적 생성 -->
-        </div>
-        <button id="submitAnswerBtn">제출</button>
-        <p id="feedbackMsg"></p>
-      </div>
-    </div>
 
-    <!-- ⑥ 틀린 문제 OX 퀴즈 페이지 (준비 중) -->
-    <div id="quizSection" class="hidden">
-      <h1>틀린 문제 O/X 퀴즈 (준비 중)</h1>
-    </div>
-  </div>
+def get_student_ids_for_exam(exam_name):
+    """
+    주어진 exam_name(예: “Spurt 모의고사 05회”)에서 응시자 목록(리클래스ID 리스트)을 반환.
+    student_answer/*.csv 안의 각 반별 CSV를 읽어서, 
+    첫열(이름) + 둘째열(전화번호 뒷8자리) 조합으로 “리클래스ID”를 만든다고 가정.
+    리턴 값: ['강민엽1553', '곽명현4739', …]
+    """
+    exam_dir = os.path.join(EXAMS_DIR, exam_name)
+    sa_dir = os.path.join(exam_dir, "student_answer")
+    valid_ids = []
 
-  <script>
-    let currentId = "";
-    let currentExam = "";
-    let wrongQuestions = [];
-    let currentQuestionIndex = 0;
+    if not os.path.isdir(sa_dir):
+        return []  # student_answer 폴더 자체가 없으면 빈 리스트
 
-    // “처음으로” 버튼 클릭 → 메뉴 페이지로
-    document.getElementById("homeButton").onclick = () => {
-      // 로그인/회차 선택은 건너뛰고, 바로 “메뉴” 페이지로
-      showSection("menuSection");
-      hideSection("loginSection");
-      hideSection("examSection");
-      hideSection("reportSection");
-      hideSection("reviewSection");
-      hideSection("quizSection");
-      document.getElementById("homeButton").classList.remove("hidden");
-      clearMessages();
-    };
+    # 모든 CSV 파일 읽기
+    for csv_path in glob.glob(os.path.join(sa_dir, "*.csv")):
+        try:
+            df = pd.read_csv(csv_path, dtype=str)
+        except:
+            continue
+        # 첫열 = 이름, 둘째열 = 전화번호("010-" 제외한 뒷8자리 또는 "12345678" 형태)
+        # 예: 이름="강민엽", 전화번호="1553" → student_id="강민엽1553"
+        for _, row in df.iterrows():
+            name = str(row.iloc[0]).strip()
+            phone = str(row.iloc[1]).strip()
+            # 혹시 전화번호에 하이픈(-)이 들어 있으면 뒤 8자리만 쓰도록
+            phone_suffix = phone.replace("-", "")[-8:]
+            sid = f"{name}{phone_suffix}"
+            valid_ids.append(sid)
+    return set(valid_ids)
 
-    // 1) 로그인 단계
-    document.getElementById("loginBtn").onclick = () => {
-      const id = document.getElementById("loginId").value.trim();
-      if (!id) {
-        return (document.getElementById("loginMsg").textContent = "ID를 입력하세요");
-      }
-      fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
-        .then((res) =>
-          res.json().then((j) => ({
-            ok: res.ok,
-            ...j
-          }))
-        )
-        .then((data) => {
-          if (data.authenticated) {
-            currentId = id;
-            document.getElementById("loginSection").classList.add("hidden");
-            document.getElementById("examSection").classList.remove("hidden");
-            document.getElementById("homeButton").classList.add("hidden");
-            loadExams();
-          } else {
-            document.getElementById("loginMsg").textContent =
-              "인증되지 않은 ID입니다";
-          }
+
+def find_reportcard_path(exam_name, student_id):
+    """
+    report card 폴더 구조 안에서 {student_id}_Spurt 모의고사 {회차}회_성적표.png 파일을 찾는다.
+    발견되면 절대경로를 반환, 못 찾으면 None 반환.
+    """
+    exam_dir = os.path.join(EXAMS_DIR, exam_name)
+    rc_dir = os.path.join(exam_dir, "report card")
+    if not os.path.isdir(rc_dir):
+        return None
+
+    # 하위 모든 디렉터리를 순회하며 파일 이름 매칭
+    target_filename = f"{student_id}_Spurt 모의고사 {exam_name.split()[-1]}_성적표.png"
+    # exam_name.split()[-1] ⇒ “05회” 부분만 뽑아서 파일명에 맞추게 처리
+    for root, _, files in os.walk(rc_dir):
+        for fn in files:
+            if fn == target_filename:
+                return os.path.join(root, fn)
+    return None
+
+
+def get_answer_key_for_exam(exam_name):
+    """
+    answer 폴더 내의 CSV(A.csv)를 읽어서, 
+    문제번호 → 정답(int) 매핑 dict 반환.
+    """
+    exam_dir = os.path.join(EXAMS_DIR, exam_name)
+    ans_dir = os.path.join(exam_dir, "answer")
+    if not os.path.isdir(ans_dir):
+        return {}
+
+    # answer/*.csv (하나만 있다고 가정)
+    files = glob.glob(os.path.join(ans_dir, "*.csv"))
+    if not files:
+        return {}
+
+    try:
+        df = pd.read_csv(files[0], header=None, dtype=str)
+    except:
+        return {}
+
+    # 두 번째 행(인덱스1) 이상에 실제 문제 정보가 있다고 가정
+    # 여기서는 "문제번호, 정답, 배점, 문제유형" 순서라고 가정
+    # 예제에서는 df.iloc[1:,1:5] 과 비슷하게 사용
+    ans_map = {}
+    raw = df.iloc[1:, 1:3]  # 컬럼1=정답, 컬럼2=배점(우리는 정답만 필요)
+    raw = raw.reset_index(drop=True)
+    # 문제번호는 그냥 1부터 순차적으로 붙여서 매핑
+    for i, row in raw.iterrows():
+        try:
+            correct = int(row.iloc[0])
+            ans_map[i + 1] = correct
+        except:
+            continue
+    return ans_map
+
+
+def get_student_answers_for_exam_and_id(exam_name, student_id):
+    """
+    주어진 exam_name의 student_answer/*.csv 안에서 “student_id”에 해당하는 학생의 답안 리스트(1~문제수) 반환.
+    학생 답안은 DataFrame의 나머지 칼럼(3번째 칼럼 이후)에 순서대로 있다고 가정.
+    반환: [answer1, answer2, …], 비어있으면 "" 문자열. 
+    """
+    exam_dir = os.path.join(EXAMS_DIR, exam_name)
+    sa_dir = os.path.join(exam_dir, "student_answer")
+    if not os.path.isdir(sa_dir):
+        return []
+
+    for csv_path in glob.glob(os.path.join(sa_dir, "*.csv")):
+        try:
+            df = pd.read_csv(csv_path, dtype=str)
+        except:
+            continue
+        # “이름+전화번호” 조합으로 student_id와 일치하는 행 찾기
+        for _, row in df.iterrows():
+            name = str(row.iloc[0]).strip()
+            phone = str(row.iloc[1]).strip().replace("-", "")[-8:]
+            sid = f"{name}{phone}"
+            if sid == student_id:
+                # 답안 열은 그 이후 칼럼들(3번째 칼럼부터 끝까지)
+                answers = []
+                for i in range(2, len(row)):
+                    val = str(row.iloc[i]).strip()
+                    # 비어있거나 숫자가 아니면 빈답("")
+                    if not val or not val.isdigit():
+                        answers.append("")
+                    else:
+                        answers.append(val)
+                return answers
+    # 해당 학생 ID를 못 찾았으면 빈 리스트 반환
+    return []
+
+
+# ===============================================
+#  API Endpoints
+# ===============================================
+
+@app.route("/api/authenticate")
+def api_authenticate():
+    """
+    Query param: ?id={리클래스ID}
+    student_list.csv 에서 확인 후 {authenticated:true/false} 반환
+    """
+    req_id = request.args.get("id", "").strip()
+    if not req_id:
+        return jsonify({"authenticated": False})
+
+    valid_ids = load_valid_ids()
+    if req_id in valid_ids:
+        return jsonify({"authenticated": True})
+    else:
+        return jsonify({"authenticated": False})
+
+
+@app.route("/api/exams")
+def api_exams():
+    """
+    GET → 등록된 모든 시험(회차) 이름 리스트 반환
+    """
+    exams = list_all_exams()
+    return jsonify(exams)
+
+
+@app.route("/api/check_exam")
+def api_check_exam():
+    """
+    Query param: ?exam={exam_name}&id={student_id}
+    해당 학생이 해당 시험에 응시했는지 확인 → {registered: true/false, error(?): 메시지}
+    """
+    exam = request.args.get("exam", "").strip()
+    sid = request.args.get("id", "").strip()
+    if not exam or not sid:
+        return jsonify({"registered": False, "error": "잘못된 요청입니다."})
+
+    valid_exams = list_all_exams()
+    if exam not in valid_exams:
+        return jsonify({"registered": False, "error": "존재하지 않는 회차입니다."})
+
+    student_ids = get_student_ids_for_exam(exam)
+    if sid in student_ids:
+        return jsonify({"registered": True})
+    else:
+        return jsonify({"registered": False, "error": "응시 정보가 없습니다."})
+
+
+@app.route("/api/reportcard")
+def api_reportcard():
+    """
+    Query param: ?exam={exam_name}&id={student_id}
+    해당 학생의 성적표 이미지 URL을 {url: "..."} 로 반환.
+    """
+    exam = request.args.get("exam", "").strip()
+    sid = request.args.get("id", "").strip()
+    if not exam or not sid:
+        return jsonify({"url": None, "error": "잘못된 요청입니다."})
+
+    valid_exams = list_all_exams()
+    if exam not in valid_exams:
+        return jsonify({"url": None, "error": "존재하지 않는 회차입니다."})
+
+    img_path = find_reportcard_path(exam, sid)
+    if img_path and os.path.isfile(img_path):
+        # 직접 파일을 전송하는 엔드포인트를 호출할 수 있도록 URL 반환
+        return jsonify({
+            "url": f"/api/reportcard_image?exam={json.dumps(exam)}&id={json.dumps(sid)}"
         })
-        .catch(() => {
-          document.getElementById("loginMsg").textContent =
-            "인증 중 오류가 발생했습니다";
-        });
-    };
+    else:
+        return jsonify({"url": None, "error": "성적표를 찾을 수 없습니다."})
 
-    // 2) 회차 목록 불러오기 & 회차 선택
-    function loadExams() {
-      fetch("/api/exams")
-        .then((res) => res.json())
-        .then((exams) => {
-          const sel = document.getElementById("examSelect");
-          sel.innerHTML = "";
-          if (exams.length === 0) {
-            sel.innerHTML = "<option>등록된 회차가 없습니다</option>";
-            return;
-          }
-          exams.forEach((e) => {
-            const opt = document.createElement("option");
-            opt.value = e;
-            opt.textContent = e;
-            sel.appendChild(opt);
-          });
-        })
-        .catch(() => {
-          document.getElementById("examMsg").textContent = "회차 목록 로드 실패";
-        });
-    }
 
-    document.getElementById("examBtn").onclick = () => {
-      const exam = document.getElementById("examSelect").value;
-      fetch(
-        `/api/check_exam?exam=${encodeURIComponent(
-          exam
-        )}&id=${encodeURIComponent(currentId)}`
-      )
-        .then((res) =>
-          res.json().then((j) => ({
-            ok: res.ok,
-            ...j
-          }))
-        )
-        .then((data) => {
-          if (data.registered) {
-            currentExam = exam;
-            document.getElementById("examSection").classList.add("hidden");
-            document.getElementById("menuSection").classList.remove("hidden");
-            document.getElementById("homeButton").classList.remove("hidden");
-          } else {
-            document.getElementById("examMsg").textContent = data.error;
-          }
-        })
-        .catch(() => {
-          document.getElementById("examMsg").textContent =
-            "응시 여부 확인 중 오류";
-        });
-    };
+@app.route("/api/reportcard_image")
+def api_reportcard_image():
+    """
+    실제 성적표 이미지를 send_file 로 반환
+    Query param: ?exam="{exam_name}"&id="{student_id}"
+    """
+    exam = request.args.get("exam", "").strip().strip('"')
+    sid = request.args.get("id", "").strip().strip('"')
+    if not exam or not sid:
+        return abort(404)
 
-    // 3) 메뉴 버튼 클릭
-    document.getElementById("menuReport").onclick = () => {
-      // “내 성적표 확인” → /api/reportcard?exam=&id= 호출
-      fetch(
-        `/api/reportcard?exam=${encodeURIComponent(
-          currentExam
-        )}&id=${encodeURIComponent(currentId)}`
-      )
-        .then((res) =>
-          res.json().then((j) => ({
-            ok: res.ok,
-            ...j
-          }))
-        )
-        .then((data) => {
-          hideAllSections();
-          document.getElementById("reportSection").classList.remove("hidden");
-          document.getElementById("homeButton").classList.remove("hidden");
-          if (data.url) {
-            document.getElementById("reportImage").src = data.url;
-            document.getElementById("reportMsg").textContent = "";
-          } else {
-            document.getElementById("reportMsg").textContent =
-              data.error || "성적표를 찾을 수 없습니다.";
-          }
-        })
-        .catch(() => {
-          hideAllSections();
-          document.getElementById("reportSection").classList.remove("hidden");
-          document.getElementById("homeButton").classList.remove("hidden");
-          document.getElementById("reportMsg").textContent =
-            "성적표 로드 중 오류";
-        });
-    };
+    img_path = find_reportcard_path(exam, sid)
+    if img_path and os.path.isfile(img_path):
+        return send_file(img_path)
+    else:
+        return abort(404)
 
-    document.getElementById("menuReview").onclick = () => {
-      // 틀린 문제 다시 풀기
-      hideAllSections();
-      document.getElementById("reviewSection").classList.remove("hidden");
-      document.getElementById("homeButton").classList.remove("hidden");
-      loadWrongQuestions();
-    };
 
-    document.getElementById("menuQuiz").onclick = () => {
-      hideAllSections();
-      document.getElementById("quizSection").classList.remove("hidden");
-      document.getElementById("homeButton").classList.remove("hidden");
-    };
+@app.route("/api/wrong_questions")
+def api_wrong_questions():
+    """
+    Query param: ?exam={exam_name}&id={student_id}
+    해당 학생의 답안과 답안지(answer) 비교하여 틀린 문제 목록 반환 → {wrongs: [번호1, 번호2, …]}
+    """
+    exam = request.args.get("exam", "").strip()
+    sid = request.args.get("id", "").strip()
+    if not exam or not sid:
+        return jsonify({"wrongs": None, "error": "잘못된 요청입니다."})
 
-    // 4) 틀린 문제 목록 가져오기
-    function loadWrongQuestions() {
-      document.getElementById("reviewMsg").textContent = "";
-      fetch(
-        `/api/wrong_questions?exam=${encodeURIComponent(
-          currentExam
-        )}&id=${encodeURIComponent(currentId)}`
-      )
-        .then((res) =>
-          res.json().then((j) => ({
-            ok: res.ok,
-            ...j
-          }))
-        )
-        .then((data) => {
-          if (data.wrongs && data.wrongs.length > 0) {
-            wrongQuestions = data.wrongs;
-            currentQuestionIndex = 0;
-            showQuestion(); // 첫 번째 틀린 문제부터 표시
-          } else if (data.wrongs && data.wrongs.length === 0) {
-            document.getElementById("reviewMsg").textContent =
-              "틀린 문제가 없습니다!";
-          } else {
-            document.getElementById("reviewMsg").textContent =
-              data.error || "틀린 문제 로드 중 오류";
-          }
-        })
-        .catch(() => {
-          document.getElementById("reviewMsg").textContent =
-            "틀린 문제 로드 중 오류";
-        });
-    }
+    valid_exams = list_all_exams()
+    if exam not in valid_exams:
+        return jsonify({"wrongs": None, "error": "존재하지 않는 회차입니다."})
 
-    // 틀린 문제를 화면에 표시
-    function showQuestion() {
-      const container = document.getElementById("questionContainer");
-      container.classList.remove("hidden");
-      document.getElementById("feedbackMsg").textContent = "";
-      const qnum = wrongQuestions[currentQuestionIndex];
-      // 문제 이미지 경로: /static/problem_bank/{exam}/problem_images/{qnum}.png
-      document.getElementById("questionImage").src = `/static/problem_bank/${encodeURIComponent(
-        currentExam
-      )}/problem_images/${qnum}.png`;
+    # 학생이 해당 시험에 응시했는지 확인
+    student_ids = get_student_ids_for_exam(exam)
+    if sid not in student_ids:
+        return jsonify({"wrongs": None, "error": "응시 정보가 없습니다."})
 
-      // 옵션 1~5 렌더링
-      const opts = document.getElementById("optionsContainer");
-      opts.innerHTML = "";
-      for (let i = 1; i <= 5; i++) {
-        const id = `opt_${i}`;
-        const label = document.createElement("label");
-        label.className = "option-label";
-        label.htmlFor = id;
-        label.textContent = `${i}번`;
-        const radio = document.createElement("input");
-        radio.type = "radio";
-        radio.name = "answer";
-        radio.id = id;
-        radio.value = i;
-        label.prepend(radio);
-        opts.appendChild(label);
-      }
-    }
+    # 답안 키와 학생 답안 가져오기
+    answer_key = get_answer_key_for_exam(exam)  # {1:3, 2:1, …}
+    student_answers = get_student_answers_for_exam_and_id(exam, sid)
+    if not student_answers:
+        return jsonify({"wrongs": None, "error": "학생 답안을 찾을 수 없습니다."})
 
-    // 답안 제출
-    document.getElementById("submitAnswerBtn").onclick = () => {
-      const selected = document.querySelector(
-        'input[name="answer"]:checked'
-      );
-      if (!selected) {
-        document.getElementById("feedbackMsg").textContent =
-          "먼저 선택하고 제출하세요.";
-        return;
-      }
-      const chosen = selected.value;
-      const qnum = wrongQuestions[currentQuestionIndex];
-      fetch("/api/submit_answer", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          exam: currentExam,
-          id: currentId,
-          question: qnum,
-          answer: chosen
-        })
-      })
-        .then((res) =>
-          res.json().then((j) => ({
-            ok: res.ok,
-            ...j
-          }))
-        )
-        .then((data) => {
-          if (data.correct === true) {
-            document.getElementById("feedbackMsg").textContent = "정답입니다! 🎉";
-          } else {
-            document.getElementById("feedbackMsg").textContent =
-              `오답입니다. 정답은 ${data.correctAnswer}번입니다.`;
-          }
-          // 다음 문제로 넘어가려면 1~2초 대기 후 next
-          setTimeout(() => {
-            currentQuestionIndex++;
-            if (currentQuestionIndex < wrongQuestions.length) {
-              showQuestion();
-            } else {
-              document.getElementById("feedbackMsg").textContent =
-                "모든 틀린 문제를 확인하셨습니다!";
-            }
-          }, 1000);
-        })
-        .catch(() => {
-          document.getElementById("feedbackMsg").textContent =
-            "제출 중 오류가 발생했습니다.";
-        });
-    };
+    wrongs = []
+    for i, ans in enumerate(student_answers):
+        qnum = i + 1
+        correct = answer_key.get(qnum)
+        if correct is None:
+            continue  # 해당 문제번호가 키에 없으면 건너뜀
+        # 비어있거나 숫자가 아니면 틀린 것으로 간주
+        if not ans or not ans.isdigit() or int(ans) != correct:
+            wrongs.append(qnum)
 
-    // 공통 함수
-    function hideAllSections() {
-      [
-        "loginSection",
-        "examSection",
-        "menuSection",
-        "reportSection",
-        "reviewSection",
-        "quizSection"
-      ].forEach((id) =>
-        document.getElementById(id).classList.add("hidden")
-      );
-      document
-        .getElementById("questionContainer")
-        .classList.add("hidden");
-    }
-    function showSection(id) {
-      document.getElementById(id).classList.remove("hidden");
-    }
-    function hideSection(id) {
-      document.getElementById(id).classList.add("hidden");
-    }
-    function clearMessages() {
-      ["loginMsg", "examMsg", "menuMsg", "reportMsg", "reviewMsg"].forEach(
-        (id) => {
-          document.getElementById(id).textContent = "";
-        }
-      );
-    }
-  </script>
-</body>
-</html>
+    return jsonify({"wrongs": wrongs})
+
+
+@app.route("/api/submit_answer", methods=["POST"])
+def api_submit_answer():
+    """
+    POST JSON: { exam:"{exam_name}", id:"{student_id}", question:int, answer:str }
+    해당 문제의 정답 키와 비교해서 {correct: true/false, correctAnswer: X} 반환
+    """
+    data = request.get_json() or {}
+    exam = data.get("exam", "").strip()
+    sid = data.get("id", "").strip()
+    qnum = data.get("question")
+    ans = data.get("answer")
+
+    if not exam or not sid or qnum is None or ans is None:
+        return jsonify({"error": "잘못된 요청입니다."}), 400
+
+    valid_exams = list_all_exams()
+    if exam not in valid_exams:
+        return jsonify({"error": "존재하지 않는 회차입니다."}), 400
+
+    answer_key = get_answer_key_for_exam(exam)
+    correct_ans = answer_key.get(int(qnum))
+    if correct_ans is None:
+        return jsonify({"error": "해당 문제를 찾을 수 없습니다."}), 404
+
+    try:
+        chosen = int(ans)
+    except:
+        chosen = None
+
+    if chosen == correct_ans:
+        return jsonify({"correct": True, "correctAnswer": correct_ans})
+    else:
+        return jsonify({"correct": False, "correctAnswer": correct_ans})
+
+
+# ===============================================
+#  메인 페이지 라우팅 (index.html을 리턴)
+# ===============================================
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_frontend(path):
+    """
+    어떤 경로에도 모두 index.html (싱글 페이지 애플리케이션) 을 리턴합니다.
+    실제 정적 폴더 안의 파일을 요청할 때만 그 파일을 리턴하고,
+    나머지는 index.html을 리턴하여 프론트엔드 라우팅 처리.
+    """
+    # 만약 static 내부 파일을 요청하면 해당 파일 그대로 리턴
+    if path and os.path.exists(os.path.join(app.static_folder, path)):
+        return send_file(os.path.join(app.static_folder, path))
+    # 그 외에는 index.html
+    return send_file(os.path.join(os.getcwd(), "index.html"))
+
+
+# ===============================================
+#  Flask 앱 실행
+# ===============================================
+if __name__ == "__main__":
+    # 포트나 디버그 모드 등은 필요에 따라 수정하세요
+    app.run(host="0.0.0.0", port=5000, debug=True)
+
