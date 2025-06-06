@@ -1,10 +1,9 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8">
   <!-- 모바일 퍼스트 뷰포트 -->
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GAIA 모의고사 복습 사이트</title>
   <style>
     body {
@@ -66,19 +65,19 @@
     .menu-button {
       background: #28a745;
       margin-bottom: 0.75rem;
-      color: white;
-      font-size: 1rem;
     }
     .menu-button:nth-child(2) { background: #ffc107; }
     .menu-button:nth-child(3) { background: #dc3545; }
-
+    .menu-button {
+      color: white;
+      font-size: 1rem;
+    }
     /* 리포트 카드 이미지 */
     .report-img {
       display: block;
       max-width: 100%;
       margin: 0 auto;
     }
-
     /* GIF (로그인/메인 페이지 상단 로고) */
     .top-gif {
       display: block;
@@ -86,25 +85,49 @@
       max-width: 200px;
       margin: 0 auto 1rem;
     }
-
     /* 각 섹션 숨김/보이기 */
     .hidden { display: none; }
+
+    /* 2. 틀린 문제 다시 풀기 영역 */
+    #reviewContainer {
+      text-align: center;
+    }
+    #reviewContainer img {
+      max-width: 100%;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .choice-button {
+      display: inline-block;
+      width: 18%;
+      margin: 1%;
+      padding: 0.75rem 0;
+      font-size: 1rem;
+      border: 1px solid #007bff;
+      border-radius: 4px;
+      background: white;
+      color: #007bff;
+      cursor: pointer;
+    }
+    .choice-button.correct { background: #28a745; color: white; }
+    .choice-button.wrong { background: #dc3545; color: white; }
+
   </style>
 </head>
 <body>
   <div class="container">
-
-    <!-- “처음으로” 버튼 (로그인/메인 제외 나머지 페이지에서만 보이도록 JS 제어) -->
+    <!-- “처음으로” 버튼 (로그인/메인 제외 나머지 페이지에서만 보이도록 JS가 제어) -->
     <div id="homeButton" class="home-button hidden">
-      <img src="icons/home.png" alt="Home 아이콘" /> 
+      <img src="icons/home.png" alt="Home 아이콘"> 
       <span>처음으로</span>
     </div>
 
     <!-- ① 로그인 페이지 -->
     <div id="loginSection">
       <h1>GAIA 모의고사 복습 사이트</h1>
-      <img src="globe.gif" alt="Globe 로고" class="top-gif" />
-      <input type="text" id="loginId" placeholder="리클래스 ID 입력" />
+      <img src="globe.gif" alt="Globe 로고" class="top-gif">
+      <input type="text" id="loginId" placeholder="리클래스 ID 입력">
       <button id="loginBtn">로그인</button>
       <p id="loginMsg" class="error"></p>
     </div>
@@ -122,312 +145,282 @@
       <h1>GAIA 모의고사 복습 사이트</h1>
       <button class="menu-button" id="menuReport">1. 내 성적표 확인</button>
       <button class="menu-button" id="menuReview">2. 틀린 문제 다시 풀기</button>
-      <button class="menu-button" id="menuQuiz">3. 틀린 문제 OX 퀴즈</button>
+      <button class="menu-button" id="menuQuiz">3. 틀린 문제 O/X 퀴즈</button>
       <p id="menuMsg" class="error"></p>
     </div>
 
     <!-- ④ 성적표 표시 페이지 -->
     <div id="reportSection" class="hidden">
       <h1>내 성적표</h1>
-      <img id="reportImage" class="report-img" alt="성적표 이미지" />
+      <img id="reportImage" class="report-img" alt="성적표 이미지">
       <p id="reportMsg" class="error"></p>
     </div>
 
-    <!-- ⑤ 틀린 문제 다시 풀기 (컨텐츠 동적 로드) -->
+    <!-- ⑤ 틀린 문제 다시 풀기 페이지 -->
     <div id="reviewSection" class="hidden">
       <h1>틀린 문제 다시 풀기</h1>
-      <!-- 틀린 문제 번호 목록만 먼저 보여주고, 클릭하면 문제 이미지 + 선지를 로드하도록 JS에서 제어 -->
-      <div id="wrongList"></div>
-      <div id="questionArea" class="hidden">
-        <img id="questionImg" src="" alt="문제 이미지" style="max-width:100%; margin: 1rem 0;" />
-        <div id="choices">
-          <!-- 선지 버튼 예시 -->
-          <button class="choice-button" data-choice="1">1</button>
-          <button class="choice-button" data-choice="2">2</button>
-          <button class="choice-button" data-choice="3">3</button>
-          <button class="choice-button" data-choice="4">4</button>
-          <button class="choice-button" data-choice="5">5</button>
-        </div>
-        <p id="feedbackMsg" class="error"></p>
+      <div id="reviewContainer">
+        <!-- JS가 동적으로 삽입 -->
+        <img id="questionImage" src="" alt="문제 이미지" class="hidden">
+        <div id="choiceButtons"></div>
+        <button id="nextQuestionBtn" class="hidden" style="margin-top:1rem;">다음 문제</button>
       </div>
+      <p id="reviewMsg" class="error"></p>
     </div>
 
-    <!-- ⑥ 틀린 문제 OX 퀴즈 (준비 중) -->
+    <!-- ⑥ 틀린 문제 OX 퀴즈 페이지 -->
     <div id="quizSection" class="hidden">
-      <h1>틀린 문제 OX 퀴즈 (준비 중)</h1>
+      <h1>틀린 문제 O/X 퀴즈 (준비 중)</h1>
+      <p>구현 예정</p>
     </div>
-
   </div>
 
   <script>
-    let currentId = "";
-    let currentExam = "";
-    let wrongQuestions = [];  // 틀린 문제 번호 리스트
-    let answerKey = {};       // {문제번호: 정답} 맵
+    let currentId = '';
+    let currentExam = '';
+    let wrongList = [];       // 틀린 문제 번호 배열
+    let currentWrongIndex = 0; // wrongList 인덱스
 
-    // “처음으로” 클릭 → 메뉴 페이지로 (로그인/메인 제외 모든 페이지에서만 보이도록)
-    document.getElementById("homeButton").onclick = () => {
-      hideAllSections();
-      document.getElementById("menuSection").classList.remove("hidden");
-      document.getElementById("homeButton").classList.add("hidden");
+    // “처음으로” 버튼 클릭 → 메뉴 페이지로 돌아가기
+    document.getElementById('homeButton').onclick = () => {
+      showSection('menuSection');
+      hideSection('loginSection');
+      hideSection('examSection');
+      hideSection('reportSection');
+      hideSection('reviewSection');
+      hideSection('quizSection');
       clearMessages();
+      // home 버튼은 메뉴 페이지에선 보이고, 로그인/회차 페이지에선 숨김
+      document.getElementById('homeButton').classList.remove('hidden');
     };
 
-    // 1) 로그인
-    document.getElementById("loginBtn").onclick = () => {
-      const id = document.getElementById("loginId").value.trim();
+    // 1) 로그인 단계
+    document.getElementById('loginBtn').onclick = () => {
+      const id = document.getElementById('loginId').value.trim();
       if (!id) {
-        return (document.getElementById("loginMsg").textContent = "ID를 입력하세요");
+        return document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
       }
       fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
-        .then((res) => res.json().then((j) => ({ ok: res.ok, ...j })))
-        .then((data) => {
+        .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
+        .then(data => {
           if (data.authenticated) {
             currentId = id;
-            hideAllSections();
-            document.getElementById("examSection").classList.remove("hidden");
-            document.getElementById("homeButton").classList.add("hidden");
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('examSection').classList.remove('hidden');
+            document.getElementById('homeButton').classList.add('hidden');
             loadExams();
           } else {
-            document.getElementById("loginMsg").textContent = "인증되지 않은 ID입니다";
+            document.getElementById('loginMsg').textContent = '인증되지 않은 ID입니다';
           }
         })
         .catch(() => {
-          document.getElementById("loginMsg").textContent = "인증 중 오류가 발생했습니다";
+          document.getElementById('loginMsg').textContent = '인증 중 오류가 발생했습니다';
         });
     };
 
     // 2) 회차 목록 불러오기 & 회차 선택
     function loadExams() {
-      fetch("/api/exams")
-        .then((res) => res.json())
-        .then((exams) => {
-          const sel = document.getElementById("examSelect");
-          sel.innerHTML = "";
+      fetch('/api/exams')
+        .then(res => res.json())
+        .then(exams => {
+          const sel = document.getElementById('examSelect');
+          sel.innerHTML = '';
           if (exams.length === 0) {
             sel.innerHTML = '<option>등록된 회차가 없습니다</option>';
             return;
           }
-          exams.forEach((e) => {
-            const opt = document.createElement("option");
-            opt.value = e;
-            opt.textContent = e;
+          exams.forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e; opt.textContent = e;
             sel.appendChild(opt);
           });
         })
         .catch(() => {
-          document.getElementById("examMsg").textContent = "회차 목록 로드 실패";
+          document.getElementById('examMsg').textContent = '회차 목록 로드 실패';
         });
     }
 
-    document.getElementById("examBtn").onclick = () => {
-      const exam = document.getElementById("examSelect").value;
-      fetch(
-        `/api/check_exam?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(
-          currentId
-        )}`
-      )
-        .then((res) => res.json().then((j) => ({ ok: res.ok, ...j })))
-        .then((data) => {
+    document.getElementById('examBtn').onclick = () => {
+      const exam = document.getElementById('examSelect').value;
+      fetch(`/api/check_exam?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)}`)
+        .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
+        .then(data => {
           if (data.registered) {
             currentExam = exam;
-            hideAllSections();
-            document.getElementById("menuSection").classList.remove("hidden");
-            document.getElementById("homeButton").classList.remove("hidden");
+            document.getElementById('examSection').classList.add('hidden');
+            document.getElementById('menuSection').classList.remove('hidden');
+            document.getElementById('homeButton').classList.remove('hidden');
           } else {
-            document.getElementById("examMsg").textContent = data.error;
+            document.getElementById('examMsg').textContent = data.error;
           }
         })
         .catch(() => {
-          document.getElementById("examMsg").textContent = "응시 여부 확인 중 오류";
+          document.getElementById('examMsg').textContent = '응시 여부 확인 중 오류';
         });
     };
 
     // 3) 메뉴 버튼 클릭
-    document.getElementById("menuReport").onclick = () => {
-      fetch(
-        `/api/reportcard?exam=${encodeURIComponent(
-          currentExam
-        )}&id=${encodeURIComponent(currentId)}`
-      )
-        .then((res) => res.json().then((j) => ({ ok: res.ok, ...j })))
-        .then((data) => {
+    document.getElementById('menuReport').onclick = () => {
+      // “내 성적표 확인” → /api/reportcard?exam=&id= 호출
+      fetch(`/api/reportcard?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}`)
+        .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
+        .then(data => {
           hideAllSections();
-          document.getElementById("reportSection").classList.remove("hidden");
-          document.getElementById("homeButton").classList.remove("hidden");
+          document.getElementById('reportSection').classList.remove('hidden');
+          document.getElementById('homeButton').classList.remove('hidden');
           if (data.url) {
-            document.getElementById("reportImage").src = data.url;
-            document.getElementById("reportMsg").textContent = "";
+            document.getElementById('reportImage').src = data.url;
+            document.getElementById('reportMsg').textContent = '';
           } else {
-            document.getElementById("reportMsg").textContent =
-              data.error || "성적표를 찾을 수 없습니다.";
+            document.getElementById('reportMsg').textContent = data.error || '성적표를 찾을 수 없습니다.';
           }
         })
         .catch(() => {
           hideAllSections();
-          document.getElementById("reportSection").classList.remove("hidden");
-          document.getElementById("homeButton").classList.remove("hidden");
-          document.getElementById("reportMsg").textContent = "성적표 로드 중 오류";
+          document.getElementById('reportSection').classList.remove('hidden');
+          document.getElementById('homeButton').classList.remove('hidden');
+          document.getElementById('reportMsg').textContent = '성적표 로드 중 오류';
         });
     };
 
-    document.getElementById("menuReview").onclick = () => {
+    document.getElementById('menuReview').onclick = () => {
       hideAllSections();
-      document.getElementById("reviewSection").classList.remove("hidden");
-      document.getElementById("homeButton").classList.remove("hidden");
+      document.getElementById('reviewSection').classList.remove('hidden');
+      document.getElementById('homeButton').classList.remove('hidden');
       loadWrongQuestions();
     };
 
-    document.getElementById("menuQuiz").onclick = () => {
+    document.getElementById('menuQuiz').onclick = () => {
       hideAllSections();
-      document.getElementById("quizSection").classList.remove("hidden");
-      document.getElementById("homeButton").classList.remove("hidden");
+      document.getElementById('quizSection').classList.remove('hidden');
+      document.getElementById('homeButton').classList.remove('hidden');
+      // OX 퀴즈는 현재 구현 중 (공통 영역만 노출)
     };
 
-    // 공통 유틸
+    // 공통 함수
     function hideAllSections() {
-      [
-        "loginSection",
-        "examSection",
-        "menuSection",
-        "reportSection",
-        "reviewSection",
-        "quizSection",
-      ].forEach((id) => document.getElementById(id).classList.add("hidden"));
+      ['loginSection','examSection','menuSection','reportSection','reviewSection','quizSection']
+        .forEach(id => document.getElementById(id).classList.add('hidden'));
+    }
+    function showSection(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+    function hideSection(id) {
+      document.getElementById(id).classList.add('hidden');
     }
     function clearMessages() {
-      ["loginMsg", "examMsg", "menuMsg", "reportMsg"].forEach(
-        (id) => (document.getElementById(id).textContent = "")
-      );
+      ['loginMsg','examMsg','menuMsg','reportMsg','reviewMsg'].forEach(id => {
+        document.getElementById(id).textContent = '';
+      });
     }
 
-    // ───────────────────────────────────────────────────
-    // “틀린 문제 다시 풀기”를 위해 틀린 문제 목록을 로드
-    // ───────────────────────────────────────────────────
+    // ───────────────────────────────────────────────────────────────────────────
+    // 2) “틀린 문제 다시 풀기” 관련 스크립트
+    //    1) /api/wrong_questions 에서 틀린 문제 번호 배열을 받아 온 뒤,
+    //    2) 첫 번째 틀린 문제부터 차례대로 보여준다.
+    //    3) 사용자는 1~5번 중 하나를 선택 → /api/submit_review 로 정답 판단
+    //    4) “다음 문제” 버튼 클릭 → 다음 틀린 문제로 넘어감
+    // ───────────────────────────────────────────────────────────────────────────
+
     function loadWrongQuestions() {
-      fetch(
-        `/api/wrong_questions?exam=${encodeURIComponent(
-          currentExam
-        )}&id=${encodeURIComponent(currentId)}`
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.wrongs) {
-            wrongQuestions = data.wrongs;
-            renderWrongList();
+      // 초기화
+      document.getElementById('questionImage').classList.add('hidden');
+      document.getElementById('choiceButtons').innerHTML = '';
+      document.getElementById('nextQuestionBtn').classList.add('hidden');
+      currentWrongIndex = 0;
+      wrongList = [];
+
+      fetch(`/api/wrong_questions?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}`)
+        .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
+        .then(data => {
+          if (data.wrong_questions && data.wrong_questions.length > 0) {
+            wrongList = data.wrong_questions;
+            // 첫 번째 틀린 문제부터 화면에 표시
+            showReviewQuestion(wrongList[0]);
           } else {
-            document.getElementById("wrongList").textContent =
-              data.error || "틀린 문제 정보를 가져올 수 없습니다.";
+            document.getElementById('reviewMsg').textContent = '틀린 문제가 없습니다!';
           }
         })
         .catch(() => {
-          document.getElementById("wrongList").textContent = "오류 발생";
+          document.getElementById('reviewMsg').textContent = '틀린 문제 목록을 불러오는 중 오류';
         });
     }
 
-    // 틀린 문제 번호 목록을 화면에 버튼으로 렌더
-    function renderWrongList() {
-      const container = document.getElementById("wrongList");
-      container.innerHTML = "";
-      if (wrongQuestions.length === 0) {
-        container.textContent = "틀린 문제가 없습니다!";
-        return;
+    function showReviewQuestion(qno) {
+      // 이미지와 5개의 보기(1~5) 버튼을 그린다.
+      // 1) /api/review_question?exam=&id=&question= 호출 → 이미지 URL과 보기를 받아 옴
+      fetch(`/api/review_question?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}&question=${qno}`)
+        .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
+        .then(data => {
+          if (!data.image_url) {
+            document.getElementById('reviewMsg').textContent = '문제 이미지를 불러오는 중 오류';
+            return;
+          }
+          document.getElementById('reviewMsg').textContent = '';
+
+          // ① 문제 이미지
+          const imgEl = document.getElementById('questionImage');
+          imgEl.src = data.image_url;
+          imgEl.classList.remove('hidden');
+
+          // ② 보기 버튼들 (1~5)
+          const choicesEl = document.getElementById('choiceButtons');
+          choicesEl.innerHTML = '';
+          for (let i = 1; i <= 5; i++) {
+            const btn = document.createElement('button');
+            btn.textContent = i;
+            btn.classList.add('choice-button');
+            btn.onclick = () => handleAnswerClick(qno, i, btn);
+            choicesEl.appendChild(btn);
+          }
+          // “다음 문제” 버튼 숨김(정답 맞히거나 틀리거나, 한 번만 누른 뒤에 활성화)
+          document.getElementById('nextQuestionBtn').classList.add('hidden');
+        })
+        .catch(() => {
+          document.getElementById('reviewMsg').textContent = '문제 불러오는 중 오류';
+        });
+    }
+
+    function handleAnswerClick(qno, selected, btnEl) {
+      // 1) /api/submit_review?exam=&id=&question=&answer= 호출 → 정답 여부, 해설 반환
+      fetch(`/api/submit_review?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}&question=${qno}&answer=${selected}`)
+        .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
+        .then(data => {
+          if (data.correct === undefined) {
+            document.getElementById('reviewMsg').textContent = '정답 확인 중 오류';
+            return;
+          }
+          document.getElementById('reviewMsg').textContent = data.correct 
+            ? '정답입니다!' 
+            : `오답입니다. 정답: ${data.correct_answer}  ${data.explanation || ''}`;
+
+          // 보기 버튼들 모두 비활성화
+          document.querySelectorAll('.choice-button').forEach(b => b.disabled = true);
+          // 맞힌 버튼은 녹색, 틀린 버튼은 빨간색으로 표시
+          if (data.correct) {
+            btnEl.classList.add('correct');
+          } else {
+            btnEl.classList.add('wrong');
+          }
+          // “다음 문제” 버튼 활성화
+          document.getElementById('nextQuestionBtn').classList.remove('hidden');
+        })
+        .catch(() => {
+          document.getElementById('reviewMsg').textContent = '정답 제출 중 오류';
+        });
+    }
+
+    document.getElementById('nextQuestionBtn').onclick = () => {
+      currentWrongIndex++;
+      if (currentWrongIndex < wrongList.length) {
+        showReviewQuestion(wrongList[currentWrongIndex]);
+      } else {
+        document.getElementById('reviewMsg').textContent = '모든 틀린 문제 풀이가 완료되었습니다!';
+        document.getElementById('questionImage').classList.add('hidden');
+        document.getElementById('choiceButtons').innerHTML = '';
+        document.getElementById('nextQuestionBtn').classList.add('hidden');
       }
-      wrongQuestions.forEach((num) => {
-        const btn = document.createElement("button");
-        btn.textContent = `문제 ${num}번 다시 풀기`;
-        btn.onclick = () => loadQuestion(num);
-        container.appendChild(btn);
-      });
-    }
-
-    // 특정 문제를 불러와서 “문제 이미지 + 선지 버튼” 표시
-    function loadQuestion(qnum) {
-      // 1) 먼저 “이미지 파일”을 불러오는 로직
-      //    → 예를 들어 exams/{회차}/problem_images/{qnum}.png 식으로 저장했다고 가정.
-      //    (실제 문제 이미지 경로에 맞게 수정)
-      const imgUrl = `/static/problem_images/${currentExam}/${qnum}.png`;
-      document
-        .getElementById("questionImg")
-        .setAttribute("src", imgUrl);
-
-      // 2) answerKey 를 미리 로드해서 선지 버튼 클릭 시 정답 비교 가능
-      if (!Object.keys(answerKey).length) {
-        // 아직 answerKey가 없으면 가져오기
-        fetch(`/api/wrong_questions?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}`)
-          .then((res) => res.json())
-          .then((data) => {
-            // 우리가 get_answer_key_for_exam 에서 만들어둔 값은 /api/wrong_questions 호출 시 이미 로드 안 되므로,
-            // 별도의 “/api/answer_key?exam=XXX” 엔드포인트를 만들어도 되는데,
-            // 여기서는 이미 /api/wrong_questions → 내부적으로 답안 키를 봤기 때문에
-            // 간단히 다시 호출해 둔다. (혹은 엔드포인트를 따로 만들어 주어도 된다.)
-            fetch(`/api/answer_key?exam=${encodeURIComponent(currentExam)}`)
-              .then((r) => r.json())
-              .then((j) => {
-                answerKey = j; // {문제번호: 정답, ...}
-                showQuestionArea(qnum);
-              });
-          });
-        return;
-      }
-      showQuestionArea(qnum);
-    }
-
-    function showQuestionArea(qnum) {
-      document.getElementById("questionArea").classList.remove("hidden");
-      document.getElementById("feedbackMsg").textContent = "";
-      // 선지 버튼들에 click 이벤트를 붙인다.
-      document.querySelectorAll(".choice-button").forEach((btn) => {
-        btn.onclick = () => {
-          const chosen = parseInt(btn.dataset.choice);
-          fetch(`/api/submit_answer`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              exam: currentExam,
-              id: currentId,
-              question: qnum,
-              answer: chosen,
-            }),
-          })
-            .then((res) => res.json())
-            .then((data) => {
-              if (data.correct) {
-                document.getElementById("feedbackMsg").textContent =
-                  "정답입니다!";
-                btn.style.background = "#28a745";
-              } else {
-                document.getElementById("feedbackMsg").textContent =
-                  `오답입니다. 정답: ${data.correctAnswer}번`;
-                btn.style.background = "#dc3545";
-              }
-            })
-            .catch(() => {
-              document.getElementById("feedbackMsg").textContent =
-                "제출 중 오류가 발생했습니다";
-            });
-        };
-      });
-    }
-
-    // ───────────────────────────────────────────────────
-    // (추가) 만약 “정답 키만 따로 보내주는 API”를 만들고 싶다면,
-    // 아래에 /api/answer_key 엔드포인트를 추가해야 함.
-    // ───────────────────────────────────────────────────
-    // 예시:
-    // fetch(`/api/answer_key?exam=${encodeURIComponent(currentExam)}`)
-    //   .then((r) => r.json())
-    //   .then((j) => { answerKey = j; });
-    //
-    // 그리고 Flask 쪽에:
-    // @app.route("/api/answer_key")
-    // def api_answer_key():
-    //     exam = request.args.get("exam", "").strip()
-    //     if not exam or exam not in list_all_exams():
-    //         return jsonify({})
-    //     return jsonify(get_answer_key_for_exam(exam))
-    //
-    // 이런 식으로 구성할 수 있습니다.
+    };
   </script>
 </body>
 </html>
