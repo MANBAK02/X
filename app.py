@@ -1,357 +1,235 @@
 import os
 import csv
-from flask import Flask, request, jsonify, send_from_directory, abort
+from flask import Flask, jsonify, request, send_from_directory, abort
 
 app = Flask(
     __name__,
-    static_folder="frontend",        # 프론트엔드 정적 리소스(HTML, JS, CSS, 이미지 등)
-    static_url_path=""               # 최상위 URL(“/”)로 접근 가능
+    static_folder="frontend",   # 프론트엔드 정적 파일(index.html, globe.gif, icons 등)을 이 폴더에서 서빙
+    static_url_path=""          # "/static" 없이 바로 루트에서 접근
 )
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 1) 상수 설정
-# ─────────────────────────────────────────────────────────────────────────────
-BASE_DIR = os.getcwd()
-DATA_DIR = os.path.join(BASE_DIR, "data")
-STUDENT_LIST_CSV = os.path.join(DATA_DIR, "student_list.csv")
+# ──────────────────────────────────────────────────────────────────────────
+#  설정값
+# ──────────────────────────────────────────────────────────────────────────
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 2) 정적 파일 서빙 (HTML / CSS / JS / 아이콘 / GIF 등)
-# ─────────────────────────────────────────────────────────────────────────────
-# “/” 로 접속하면 index.html 반환
-@app.route('/')
-def serve_index():
-    return send_from_directory(app.static_folder, "index.html")
+# 데이터가 저장된 루트 디렉터리 (exam별, student_list.csv, report card 등)
+BASE_DIR = os.path.join(os.getcwd(), "data")
 
-# frontend 내부의 다른 정적 파일(icons, globe.gif 등)은 Flask가 자동으로 처리합니다.
-# (static_folder="frontend"로 지정했기 때문에, /icons/xxx, /globe.gif 등은 모두 frontend/icons/xxx, frontend/globe.gif 에서 불러옵니다.)
+# 학생 전체 목록(CSV) 경로: data/student_list.csv
+STUDENT_LIST_PATH = os.path.join(BASE_DIR, "student_list.csv")
 
-# 2-1) Exam 문제 이미지 서빙: /exam_images/{exam}/{파일명}
-@app.route('/exam_images/<path:exam>/<path:filename>')
-def serve_exam_image(exam, filename):
-    """ data/{exam}/exam_images/{filename} """
-    exam_folder = os.path.join(DATA_DIR, exam, "exam_images")
-    if not os.path.isdir(exam_folder):
-        return abort(404)
-    return send_from_directory(exam_folder, filename)
 
-# 2-2) ReportCard 이미지 서빙: /report/{exam}/{파일명}
-@app.route('/report/<path:exam>/<path:filename>')
-def serve_report_card(exam, filename):
-    """ data/{exam}/report card/{filename} """
-    report_folder = os.path.join(DATA_DIR, exam, "report card")
-    if not os.path.isdir(report_folder):
-        return abort(404)
-    return send_from_directory(report_folder, filename)
+# ──────────────────────────────────────────────────────────────────────────
+#  유틸리티 함수들
+# ──────────────────────────────────────────────────────────────────────────
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 3) API: /api/authenticate
-#     → student_list.csv 첫 열(리클래스 ID)만 비교
-# ─────────────────────────────────────────────────────────────────────────────
+def load_all_valid_ids():
+    """
+    data/student_list.csv 의 첫 열(리클래스 ID)만 읽어서 리스트로 리턴
+    - CSV 헤더가 없다고 가정. 첫 번째 행부터 바로 ID가 나열되어 있음.
+    """
+    valid_ids = set()
+    if not os.path.isfile(STUDENT_LIST_PATH):
+        return valid_ids
+
+    with open(STUDENT_LIST_PATH, newline="", encoding="utf-8-sig") as f:
+        reader = csv.reader(f)
+        for row in reader:
+            if not row:
+                continue
+            rid = row[0].strip()
+            if rid:
+                valid_ids.add(rid)
+    return valid_ids
+
+
+def find_student_in_exam(exam_name, student_id):
+    """
+    특정 exam 디렉터리 내의 student_answer 폴더를 순회하며,
+    로그인된 student_id(리클래스 ID)가 존재하는지 검사.
+    student_answer 안의 각 CSV 파일마다:
+      첫 번째 열 = 이름, 두 번째 열 = 전화번호(하이픈 포함 가능)
+      → 전화번호의 마지막 8자리(ex: "12345678")를 추출하여 '이름' + '마지막8자리' 가 student_id와 같으면 응시자로 간주
+    """
+    exam_dir = os.path.join(BASE_DIR, exam_name)
+    sa_folder = os.path.join(exam_dir, "student_answer")
+    if not os.path.isdir(sa_folder):
+        return False
+
+    for fname in os.listdir(sa_folder):
+        if not fname.lower().endswith(".csv"):
+            continue
+        fpath = os.path.join(sa_folder, fname)
+        try:
+            with open(fpath, newline="", encoding="utf-8-sig") as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if len(row) < 2:
+                        continue
+                    name = row[0].strip()
+                    phone = row[1].strip()
+                    # 전화번호에서 숫자만 남기고, 마지막 8자리 추출
+                    digits = "".join(filter(str.isdigit, phone))
+                    if len(digits) < 8:
+                        continue
+                    suffix8 = digits[-8:]
+                    generated_id = f"{name}{suffix8}"
+                    if generated_id == student_id:
+                        return True
+        except Exception:
+            # CSV 읽는 중 문제가 생겨도 계속 다음 파일 시도
+            continue
+
+    return False
+
+
+def find_report_filename(exam_name, student_id):
+    """
+    data/{exam_name}/report card 폴더 전체(서브폴더 포함)를 재귀 탐색하여,
+    'student_id'로 시작하고 '.png'로 끝나는 파일명 하나를 찾아서 리턴.
+    """
+    exam_dir = os.path.join(BASE_DIR, exam_name)
+    rc_root = os.path.join(exam_dir, "report card")
+    if not os.path.isdir(rc_root):
+        return None
+
+    # os.walk 를 통해 서브폴더까지 모두 순회
+    for dirpath, dirnames, filenames in os.walk(rc_root):
+        for fname in filenames:
+            lower = fname.lower()
+            if lower.startswith(student_id.lower()) and lower.endswith(".png"):
+                # 찾은 경우, 해당 디렉터리 기준으로 상대 경로를 만들어서 리턴
+                rel_dir = os.path.relpath(dirpath, rc_root)
+                if rel_dir == ".":
+                    return fname
+                else:
+                    # 예: "A반" 서브폴더 아래에 있으면 "A반/파일명.png" 형태로 리턴
+                    return os.path.join(rel_dir, fname)
+    return None
+
+
+# ──────────────────────────────────────────────────────────────────────────
+#  API 엔드포인트들
+# ──────────────────────────────────────────────────────────────────────────
+
 @app.route("/api/authenticate")
 def api_authenticate():
-    input_id = request.args.get("id", "").strip()
-    if not input_id:
-        return jsonify({"authenticated": False})
+    """
+    로그인 시 호출 (GET): /api/authenticate?id={리클래스ID}
+    → student_list.csv 에서 해당 ID가 존재하는지 확인
+    """
+    sid = request.args.get("id", "").strip()
+    if not sid:
+        return jsonify({"authenticated": False, "error": "ID를 입력하세요"}), 400
 
-    authenticated = False
-    try:
-        with open(STUDENT_LIST_CSV, newline="", encoding="utf-8-sig") as f:
-            reader = csv.reader(f)
-            for row in reader:
-                if len(row) < 1:
-                    continue
-                stored_id = row[0].strip()
-                if stored_id == input_id:
-                    authenticated = True
-                    break
-    except Exception as e:
-        print(f"[ERROR] /api/authenticate 예외: {e}")
-        authenticated = False
+    valid_ids = load_all_valid_ids()
+    if sid in valid_ids:
+        return jsonify({"authenticated": True})
+    else:
+        return jsonify({"authenticated": False, "error": "인증되지 않은 ID입니다"}), 200
 
-    return jsonify({"authenticated": authenticated})
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 4) API: /api/exams
-#     → data/ 폴더 하위의 “서브디렉터리”를 목록으로 반환 (등록된 회차들)
-# ─────────────────────────────────────────────────────────────────────────────
 @app.route("/api/exams")
 def api_exams():
-    try:
-        items = os.listdir(DATA_DIR)
-        # 폴더만 필터링 (파일은 무시)
-        exams = [d for d in items if os.path.isdir(os.path.join(DATA_DIR, d))]
-        return jsonify(exams)
-    except Exception as e:
-        print(f"[ERROR] /api/exams 예외: {e}")
+    """
+    회차 목록 요청 (GET): /api/exams
+    → data/ 폴더 내의 하위 디렉터리명을 배열로 리턴
+    """
+    exams = []
+    if not os.path.isdir(BASE_DIR):
         return jsonify([])
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 5) API: /api/check_exam
-#     → data/{exam}/student_answer/ 폴더에서 “이름+전화번호 뒷8자리” 조합으로
-#       로그인 ID와 비교하여 **응시 여부** 판정
-# ─────────────────────────────────────────────────────────────────────────────
+    for name in sorted(os.listdir(BASE_DIR)):
+        path = os.path.join(BASE_DIR, name)
+        # 디렉터리이면서 student_list.csv가 아닌 것들만 회차로 간주
+        if os.path.isdir(path) and name != "student_list.csv":
+            exams.append(name)
+    return jsonify(exams)
+
+
 @app.route("/api/check_exam")
 def api_check_exam():
+    """
+    회차 선택 후 응시 여부 확인 (GET): /api/check_exam?exam={exam_name}&id={리클래스ID}
+    → data/{exam_name}/student_answer 폴더 내를 순회하여 해당 ID가 있는지 검사
+    """
     exam = request.args.get("exam", "").strip()
-    input_id = request.args.get("id", "").strip()
-    if not exam or not input_id:
-        return jsonify({"registered": False, "error": "파라미터가 잘못되었습니다."})
+    sid = request.args.get("id", "").strip()
+    if not exam or not sid:
+        return jsonify({"registered": False, "error": "파라미터가 잘못되었습니다."}), 400
 
-    # 해당 exam 폴더의 student_answer 폴더 경로
-    student_answer_folder = os.path.join(DATA_DIR, exam, "student_answer")
-
-    if not os.path.isdir(student_answer_folder):
-        return jsonify({"registered": False, "error": "응시 정보가 없습니다."})
-
-    found = False
-    try:
-        for fname in os.listdir(student_answer_folder):
-            if not fname.lower().endswith(".csv"):
-                continue
-            csv_path = os.path.join(student_answer_folder, fname)
-            with open(csv_path, newline="", encoding="utf-8-sig") as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    if len(row) < 2:
-                        continue
-                    name = row[0].strip()
-                    phone_raw = row[1].strip()
-                    # 전화번호에서 뒷 8자리만 추출
-                    if "-" in phone_raw:
-                        suffix = phone_raw.split("-")[-1]
-                    else:
-                        suffix = phone_raw[-8:]
-                    student_id = f"{name}{suffix}"
-                    if student_id == input_id:
-                        found = True
-                        break
-                if found:
-                    break
-    except Exception as e:
-        print(f"[ERROR] /api/check_exam 예외: {e}")
-        return jsonify({"registered": False, "error": "응시 여부 확인 중 오류가 발생했습니다."})
-
-    if found:
+    if find_student_in_exam(exam, sid):
         return jsonify({"registered": True})
     else:
-        return jsonify({"registered": False, "error": "해당 모의고사 응시 정보가 없습니다."})
+        return jsonify({"registered": False, "error": "응시 정보가 없습니다."}), 200
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 6) API: /api/reportcard
-#     → data/{exam}/report card/ 폴더에서 해당 학생의 성적표 이미지 경로를 찾아 반환
-# ─────────────────────────────────────────────────────────────────────────────
+
 @app.route("/api/reportcard")
 def api_reportcard():
+    """
+    성적표 요청 (GET): /api/reportcard?exam={exam_name}&id={리클래스ID}
+    → data/{exam_name}/report card/*(서브폴더 포함) 경로에서 "{리클래스ID}_..._성적표.png" 를 찾아서 URL 리턴
+    """
     exam = request.args.get("exam", "").strip()
-    input_id = request.args.get("id", "").strip()
-    if not exam or not input_id:
-        return jsonify({"url": None, "error": "파라미터가 잘못되었습니다."})
+    sid = request.args.get("id", "").strip()
+    if not exam or not sid:
+        return jsonify({"url": None, "error": "파라미터가 잘못되었습니다."}), 400
 
-    report_folder = os.path.join(DATA_DIR, exam, "report card")
-    if not os.path.isdir(report_folder):
-        return jsonify({"url": None, "error": "성적표가 없습니다."})
-
-    # 보고자 하는 파일명: "{student_id}_{exam}_성적표.png" (또는 .PNG 등 대소문자 무관)
-    found_file = None
-    try:
-        for fname in os.listdir(report_folder):
-            # 대소문자 구분 없이 비교
-            if fname.lower().startswith(input_id.lower()) and fname.lower().endswith(".png"):
-                found_file = fname
-                break
-        if found_file:
-            # 프론트엔드에서는 <img src="http://서버주소/report/{exam}/{found_file}" /> 로 불러옴
-            url = f"/report/{exam}/{found_file}"
-            return jsonify({"url": url})
-        else:
-            return jsonify({"url": None, "error": "성적표를 찾을 수 없습니다."})
-    except Exception as e:
-        print(f"[ERROR] /api/reportcard 예외: {e}")
-        return jsonify({"url": None, "error": "성적표 로드 중 오류가 발생했습니다."})
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 7) API: /api/wrong_questions
-#     → data/{exam}/student_answer/에서 해당 학생의 답안 행을 찾아서, 
-#       data/{exam}/answer/A.csv 와 비교 → 틀린 문제 번호 배열 반환
-# ─────────────────────────────────────────────────────────────────────────────
-@app.route("/api/wrong_questions")
-def api_wrong_questions():
-    exam = request.args.get("exam", "").strip()
-    input_id = request.args.get("id", "").strip()
-    if not exam or not input_id:
-        return jsonify({"wrong_questions": []})
-
-    student_answer_folder = os.path.join(DATA_DIR, exam, "student_answer")
-    answer_csv = os.path.join(DATA_DIR, exam, "answer", "A.csv")
-    if not os.path.isdir(student_answer_folder) or not os.path.isfile(answer_csv):
-        return jsonify({"wrong_questions": []})
-
-    # 1) “이름+전화번호 뒷8자리” 로 student row 찾기
-    student_row = None
-    try:
-        for fname in os.listdir(student_answer_folder):
-            if not fname.lower().endswith(".csv"):
-                continue
-            csv_path = os.path.join(student_answer_folder, fname)
-            with open(csv_path, newline="", encoding="utf-8-sig") as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    if len(row) < 2:
-                        continue
-                    name = row[0].strip()
-                    phone_raw = row[1].strip()
-                    if "-" in phone_raw:
-                        suffix = phone_raw.split("-")[-1]
-                    else:
-                        suffix = phone_raw[-8:]
-                    student_id = f"{name}{suffix}"
-                    if student_id == input_id:
-                        student_row = row[2:]  # 3열부터 실제 student의 선택/응답(1,2,3,…)이 들어있다고 가정
-                        break
-                if student_row is not None:
-                    break
-    except Exception as e:
-        print(f"[ERROR] /api/wrong_questions - 학생 답안 탐색 중 예외: {e}")
-        return jsonify({"wrong_questions": []})
-
-    if not student_row:
-        # 해당 학생의 답안을 못 찾음 → 틀린 문제 없음
-        return jsonify({"wrong_questions": []})
-
-    # 2) 정답 CSV(A.csv)에서 정답 열만 뽑아서 비교 (두 번째 행부터 문제별 정보가 있다고 가정)
-    correct_answers = []
-    try:
-        with open(answer_csv, newline="", encoding="utf-8-sig") as f:
-            reader = csv.reader(f)
-            rows = list(reader)
-            # 보통 A.csv는 두 번째 행부터 “문제번호,정답,배점,문제유형” 식으로 되어 있으므로, [1:] 부터 사용
-            for r in rows[1:]:
-                # r[1] 에 정답(숫자) 형식이라고 가정
-                try:
-                    correct_answers.append(int(str(r[1]).strip()))
-                except:
-                    correct_answers.append(None)
-    except Exception as e:
-        print(f"[ERROR] /api/wrong_questions - 정답 CSV 로드 예외: {e}")
-        return jsonify({"wrong_questions": []})
-
-    # 3) student_row(3열부터…) 의 답안(예: “1”, “2”, 빈칸 등)과 correct_answers 비교
-    wrong_list = []
-    for idx, ans in enumerate(student_row):
-        ans_str = str(ans).strip()
-        # 빈칸(미응답)이거나, 숫자가 아니거나, 숫자이더라도 정답과 다르면 틀린 문제
-        if not ans_str.isdigit():
-            wrong_list.append(idx + 1)  # 문제번호 = idx+1
-        else:
-            try:
-                if correct_answers[idx] is None or int(ans_str) != correct_answers[idx]:
-                    wrong_list.append(idx + 1)
-                # 정답일 경우 넘어감
-            except:
-                wrong_list.append(idx + 1)
-
-    return jsonify({"wrong_questions": wrong_list})
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 8) API: /api/review_question
-#     → 특정 문제 번호에 대한 이미지 URL 반환
-#       (별도의 보기 데이터는 이미지 안에 포함되어 있다고 가정)
-# ─────────────────────────────────────────────────────────────────────────────
-@app.route("/api/review_question")
-def api_review_question():
-    exam = request.args.get("exam", "").strip()
-    input_id = request.args.get("id", "").strip()
-    try:
-        qno = int(request.args.get("question", "").strip())
-    except:
-        return jsonify({"image_url": None})
-
-    # 문제 이미지 경로: data/{exam}/exam_images/{qno}.png (또는 다른 확장자)
-    image_folder = os.path.join(DATA_DIR, exam, "exam_images")
-    if not os.path.isdir(image_folder):
-        return jsonify({"image_url": None})
-
-    # 실제 파일명(예: "1.png", "2.png", …). 확장자가 다를 수 있으므로, 폴더 내에 qno로 시작하는 파일을 검색
-    found_img = None
-    try:
-        for fname in os.listdir(image_folder):
-            name_only, ext = os.path.splitext(fname)
-            if name_only == str(qno):
-                found_img = fname
-                break
-    except Exception as e:
-        print(f"[ERROR] /api/review_question 예외: {e}")
-        return jsonify({"image_url": None})
-
-    if found_img:
-        url = f"/exam_images/{exam}/{found_img}"
-        return jsonify({
-            "question": qno,
-            "image_url": url,
-            "choices": [1, 2, 3, 4, 5]
-        })
+    rel_path = find_report_filename(exam, sid)
+    if rel_path:
+        # rel_path 가 "A반/파일명.png" 혹은 "파일명.png" 형태로 리턴되므로,
+        # 클라이언트는 /report/{exam}/{rel_path} 로 요청하면 된다.
+        return jsonify({"url": f"/report/{exam}/{rel_path.replace(os.sep, '/')}"} )
     else:
-        return jsonify({"image_url": None})
+        return jsonify({"url": None, "error": "성적표를 찾을 수 없습니다."})
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 9) API: /api/submit_review
-#     → 사용자가 선택한 답(1~5)과 정답을 비교하여 True/False + 간단 해설 반환
-# ─────────────────────────────────────────────────────────────────────────────
-@app.route("/api/submit_review")
-def api_submit_review():
-    exam = request.args.get("exam", "").strip()
-    input_id = request.args.get("id", "").strip()
-    try:
-        qno = int(request.args.get("question", "").strip())
-        selected = int(request.args.get("answer", "").strip())
-    except:
-        return jsonify({"correct": None})
 
-    # 정답 CSV(A.csv)에서 해당 문제 번호의 정답을 가져옴
-    answer_csv = os.path.join(DATA_DIR, exam, "answer", "A.csv")
-    if not os.path.isfile(answer_csv):
-        return jsonify({"correct": None})
+@app.route("/report/<path:exam>/<path:subpath>")
+def serve_report_image(exam, subpath):
+    """
+    report card 이미지를 클라이언트에 서빙
+    URL 예: /report/Spurt 모의고사 07회/A반/강민엽1553_Spurt 모의고사 07회_성적표.png
+    """
+    # subpath 에는 "A반/파일명.png" 혹은 "파일명.png" 와 같이 전달됨
+    report_root = os.path.join(BASE_DIR, exam, "report card")
+    requested = os.path.normpath(os.path.join(report_root, subpath))
+    # 경로가 report_root 밖으로 나가는 시도를 막기 위해 체크
+    if not requested.startswith(os.path.normpath(report_root) + os.sep) and requested != os.path.normpath(report_root):
+        abort(404)
 
-    # CSV를 읽어서, 두 번째 행부터 qno 번째(인덱스 qno-1)의 정답 추출
-    correct_answer = None
-    try:
-        with open(answer_csv, newline="", encoding="utf-8-sig") as f:
-            reader = csv.reader(f)
-            rows = list(reader)
-            # rows[1 + (qno-1)][1] 에 정답이 있다고 가정 (r[1] 컬럼)
-            row_of_q = rows[1 + (qno - 1)]
-            correct_answer = int(str(row_of_q[1]).strip())
-    except Exception as e:
-        print(f"[ERROR] /api/submit_review - 정답 추출 중 예외: {e}")
-        return jsonify({"correct": None})
+    if not os.path.isfile(requested):
+        abort(404)
 
-    correct_flag = (selected == correct_answer)
-    # “해설”이 없다면 빈 문자열 리턴
-    return jsonify({
-        "correct": correct_flag,
-        "correct_answer": correct_answer,
-        "explanation": ""   # 필요 시 확장
-    })
+    # 실제로는 send_from_directory 에 report_root와 subpath(파일명 혹은 "A반/파일명")를 넘기면 됨
+    # send_from_directory 는 디렉터리와 파일명을 두 번째 인자로 받기 때문에,
+    # 서브폴더까지 포함된 경우 경로 분할이 필요함.
+    dir_part, file_part = os.path.split(requested)
+    return send_from_directory(dir_part, file_part)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 10) API: /api/quiz  (OX 퀴즈 뼈대 – 추후 구현)
-# ─────────────────────────────────────────────────────────────────────────────
-@app.route("/api/quiz")
-def api_quiz():
-    # TODO: OX 퀴즈 기능 구현
-    return jsonify({"quiz": []})
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 11) 에러 핸들러
-# ─────────────────────────────────────────────────────────────────────────────
-@app.errorhandler(404)
-def not_found(e):
-    return "", 404
+# ──────────────────────────────────────────────────────────────────────────
+#  모든 비-API 요청은 index.html → SPA(싱글 페이지)로 연결
+# ──────────────────────────────────────────────────────────────────────────
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 12) 애플리케이션 실행
-# ─────────────────────────────────────────────────────────────────────────────
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def serve_frontend(path):
+    """
+    프론트엔드 정적 자산을 먼저 시도하고, 아니면 index.html (싱글 페이지)
+    """
+    static_path = os.path.join(app.static_folder, path)
+    if path and os.path.exists(static_path) and not os.path.isdir(static_path):
+        # 예: "icons/home.png" → 바로 반환
+        return send_from_directory(app.static_folder, path)
+    else:
+        # 루트 요청 혹은 SPA의 나머지 경로 → index.html
+        return send_from_directory(app.static_folder, "index.html")
+
+
+# ──────────────────────────────────────────────────────────────────────────
+#  앱 실행
+# ──────────────────────────────────────────────────────────────────────────
+
 if __name__ == "__main__":
-    # 개발 환경에서 테스트용으로 5000 포트 사용
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # 로컬에서 테스트할 때: debug=True 로 찍으면 콘솔에 에러 로그가 더 잘 보입니다.
+    app.run(host="0.0.0.0", port=8080, debug=True)
