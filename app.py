@@ -256,7 +256,7 @@ def api_wrong_questions():
 # ─────────────────────────────────────────────────────────────────────────────
 # 8) API: /api/review_question
 #     → 특정 문제 번호에 대한 이미지 URL 반환
-#       (별도의 보기 데이터는, 이미지 안에 포함되어 있다고 가정)
+#       (별도의 보기 데이터는 이미지 안에 포함되어 있다고 가정)
 # ─────────────────────────────────────────────────────────────────────────────
 @app.route("/api/review_question")
 def api_review_question():
@@ -268,8 +268,6 @@ def api_review_question():
         return jsonify({"image_url": None})
 
     # 문제 이미지 경로: data/{exam}/exam_images/{qno}.png (또는 다른 확장자)
-    # “정확히 어떤 확장자”인지는 미리 맞춰서 저장해야 합니다.
-    # 여기서는 “.png”로 가정
     image_folder = os.path.join(DATA_DIR, exam, "exam_images")
     if not os.path.isdir(image_folder):
         return jsonify({"image_url": None})
@@ -291,7 +289,6 @@ def api_review_question():
         return jsonify({
             "question": qno,
             "image_url": url,
-            // 선지는 이미지 안에 들어 있다고 가정 → 별도 전달하지 않습니다.
             "choices": [1, 2, 3, 4, 5]
         })
     else:
@@ -358,4 +355,3 @@ def not_found(e):
 if __name__ == "__main__":
     # 개발 환경에서 테스트용으로 5000 포트 사용
     app.run(host="0.0.0.0", port=5000, debug=True)
-
