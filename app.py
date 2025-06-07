@@ -31,6 +31,11 @@ def authenticate():
     _id = request.args.get("id", "").strip()
     return jsonify(authenticated=_id in VALID_IDS)
 
+# student_ids 집합 로딩 직후
+print("Loaded student IDs sample:", list(student_ids)[:10])
+print("Total IDs loaded:", len(student_ids))
+
+
 # 2) 회차 목록
 @app.route("/api/exams")
 def list_exams():
