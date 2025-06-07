@@ -1,121 +1,273 @@
-import os
-import csv
-from pathlib import Path
-from flask import Flask, request, jsonify, send\_from\_directory, abort
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <!-- 모바일 퍼스트 뷰포트 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-# 기본 경로 설정
+  <title>GAIA 모의고사 복습 사이트</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 1rem;
+      font-family: sans-serif;
+      background: #f9f9f9;
+    }
+    .container {
+      max-width: 400px;
+      margin: 0 auto;
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin: 0 0 0.5rem;
+      font-size: 1.5rem; /* 제목을 좀 더 키움 */
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .home-button {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      margin-bottom: 1rem;
+      font-size: 16px;
+      color: #007bff;
+    }
+    .home-button img {
+      width: 16px;
+      height: 16px;
+      margin-right: 0.25rem;
+    }
+    input, select, button {
+      display: block;
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1rem;
+      margin: 0.5rem 0;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+    }
+    p.error {
+      color: #d00;
+      font-size: 0.9rem;
+      margin: 0.25rem 0 0;
+    }
+    /* 메뉴 버튼 */
+    .menu-button {
+      background: #28a745;
+      margin-bottom: 0.75rem;
+    }
+    .menu-button:nth-child(2) { background: #ffc107; }
+    .menu-button:nth-child(3) { background: #dc3545; }
+    .menu-button {
+      color: white;
+      font-size: 1rem;
+    }
+    /* 리포트 카드 이미지 */
+    .report-img {
+      display: block;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+    /* GIF (로그인 페이지 상단 로고) */
+    .top-gif {
+      display: block;
+      width: 60%;
+      max-width: 200px;
+      margin: 0 auto 1rem;
+    }
+    /* 각 섹션 숨김/보이기 */
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- “처음으로” 버튼: 로그인/메인 제외 모든 페이지에서만 보이도록 JS 제어 -->
+    <div id="homeButton" class="home-button hidden">
+      <!-- PNG 아이콘으로 교체 -->
+      <img src="/icons/home.png" alt="Home 아이콘">
+      <span>처음으로</span>
+    </div>
 
-BASE\_DIR = Path(**file**).parent
-FRONTEND\_DIR = BASE\_DIR / "frontend"
-DATA\_DIR = BASE\_DIR / "data"
+    <!-- ① 로그인 페이지 -->
+    <div id="loginSection">
+      <h1>GAIA 모의고사 복습 사이트</h1>
+      <img src="/globe.gif" alt="Globe 로고" class="top-gif">
+      <input type="text" id="loginId" placeholder="리클래스 ID 입력">
+      <button id="loginBtn">로그인</button>
+      <p id="loginMsg" class="error"></p>
+    </div>
 
-# 학생 목록 로드
+    <!-- ② 회차 선택 페이지 -->
+    <div id="examSection" class="hidden">
+      <h1>GAIA 모의고사 복습 사이트</h1>
+      <select id="examSelect"></select>
+      <button id="examBtn">회차 선택</button>
+      <p id="examMsg" class="error"></p>
+    </div>
 
-STUDENT\_CSV = DATA\_DIR / "student\_list.csv"
-student\_ids = set()
-with open(STUDENT\_CSV, encoding="utf-8") as f:
-reader = csv.reader(f)
-next(reader, None)
-for row in reader:
-raw\_id = row\[0].lstrip("\ufeff").strip()
-student\_ids.add(raw\_id)
+    <!-- ③ 메뉴 페이지 (1. 내 성적표 / 2. 틀린 문제 다시 풀기 / 3. OX 퀴즈) -->
+    <div id="menuSection" class="hidden">
+      <h1>GAIA 모의고사 복습 사이트</h1>
+      <button class="menu-button" id="menuReport">1. 내 성적표 확인</button>
+      <button class="menu-button" id="menuReview">2. 틀린 문제 다시 풀기</button>
+      <button class="menu-button" id="menuQuiz">3. 틀린 문제 O/X 퀴즈</button>
+      <p id="menuMsg" class="error"></p>
+    </div>
 
-# Flask 애플리케이션 초기화
+    <!-- ④ 성적표 표시 페이지 -->
+    <div id="reportSection" class="hidden">
+      <h1>내 성적표</h1>
+      <img id="reportImage" class="report-img" alt="성적표 이미지">
+      <p id="reportMsg" class="error"></p>
+    </div>
 
-app = Flask(
-**name**,
-static\_folder=str(FRONTEND\_DIR),
-static\_url\_path=""
-)
+    <!-- ⑤ 틀린 문제 다시 풀기 (준비 중) -->
+    <div id="reviewSection" class="hidden">
+      <h1>틀린 문제 다시 풀기 (준비 중)</h1>
+    </div>
 
-# SPA 라우팅: 프론트엔드 파일 제공
+    <!-- ⑥ 틀린 문제 OX 퀴즈 (준비 중) -->
+    <div id="quizSection" class="hidden">
+      <h1>틀린 문제 O/X 퀴즈 (준비 중)</h1>
+    </div>
+  </div>
 
-@app.route("/", defaults={"path": ""})
-@app.route("/[path\:path](path:path)")
-def serve\_frontend(path):
-target = FRONTEND\_DIR / path
-if target.exists() and target.is\_file():
-return send\_from\_directory(str(FRONTEND\_DIR), path)
-return send\_from\_directory(str(FRONTEND\_DIR), "index.html")
+  <script>
+    let currentId = '';
+    let currentExam = '';
 
-# 인증 엔드포인트
+    // “처음으로” 버튼 클릭 → 메뉴 페이지(메뉴 버튼 1,2,3 선택 페이지)로 돌아가기
+    document.getElementById('homeButton').onclick = () => {
+      hideAllSections();
+      document.getElementById('menuSection').classList.remove('hidden');
+      clearMessages();
+      // “처음으로” 버튼은 메뉴 페이지에서는 숨기지 않는다(메뉴 페이지에는 그대로 노출).
+      // 만약 메뉴 페이지에서도 숨기고 싶다면 다음 줄을 활성화:
+      // document.getElementById('homeButton').classList.add('hidden');
+    };
 
-@app.route("/api/authenticate")
-def authenticate():
-user\_id = request.args.get("id", "").strip()
-if user\_id in student\_ids:
-return jsonify({"authenticated": True})
-return jsonify({"authenticated": False, "error": "인증되지 않은 ID입니다."})
+    // 1) 로그인 단계
+    document.getElementById('loginBtn').onclick = () => {
+      const id = document.getElementById('loginId').value.trim();
+      if (!id) {
+        return document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
+      }
+      fetch(/api/authenticate?id=${encodeURIComponent(id)})
+        .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
+        .then(data => {
+          if (data.authenticated) {
+            currentId = id;
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('examSection').classList.remove('hidden');
+            document.getElementById('homeButton').classList.add('hidden');
+            loadExams();
+          } else {
+            document.getElementById('loginMsg').textContent = '인증되지 않은 ID입니다';
+          }
+        })
+        .catch(() => {
+          document.getElementById('loginMsg').textContent = '인증 중 오류가 발생했습니다';
+        });
+    };
 
-# 회차 목록 제공
+    // 2) 회차 목록 불러오기 & 회차 선택
+    function loadExams() {
+      fetch('/api/exams')
+        .then(res => res.json())
+        .then(exams => {
+          const sel = document.getElementById('examSelect');
+          sel.innerHTML = '';
+          if (exams.length === 0) {
+            sel.innerHTML = '<option>등록된 회차가 없습니다</option>';
+            return;
+          }
+          exams.forEach(e => {
+            const opt = document.createElement('option');
+            opt.value = e; opt.textContent = e;
+            sel.appendChild(opt);
+          });
+        })
+        .catch(() => {
+          document.getElementById('examMsg').textContent = '회차 목록 로드 실패';
+        });
+    }
 
-@app.route("/api/exams")
-def list\_exams():
-try:
-exams = \[d.name for d in DATA\_DIR.iterdir() if d.is\_dir()]
-return jsonify({"exams": exams})
-except Exception as e:
-return jsonify({"error": str(e)}), 500
+    document.getElementById('examBtn').onclick = () => {
+      const exam = document.getElementById('examSelect').value;
+      fetch(/api/check_exam?exam=${encodeURIComponent(exam)}&id=${encodeURIComponent(currentId)})
+        .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
+        .then(data => {
+          if (data.registered) {
+            currentExam = exam;
+            document.getElementById('examSection').classList.add('hidden');
+            document.getElementById('menuSection').classList.remove('hidden');
+            document.getElementById('homeButton').classList.remove('hidden');
+          } else {
+            document.getElementById('examMsg').textContent = data.error;
+          }
+        })
+        .catch(() => {
+          document.getElementById('examMsg').textContent = '응시 여부 확인 중 오류';
+        });
+    };
 
-# 응시 여부 확인
+    // 3) 메뉴 버튼 클릭
+    document.getElementById('menuReport').onclick = () => {
+      // “내 성적표 확인” → /api/reportcard?exam=&id= 호출
+      fetch(/api/reportcard?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)})
+        .then(res => res.json().then(j => ({ ok: res.ok, ...j })))
+        .then(data => {
+          hideAllSections();
+          document.getElementById('reportSection').classList.remove('hidden');
+          document.getElementById('homeButton').classList.remove('hidden');
+          if (data.url) {
+            document.getElementById('reportImage').src = data.url;
+            document.getElementById('reportMsg').textContent = '';
+          } else {
+            document.getElementById('reportMsg').textContent = data.error || '성적표를 찾을 수 없습니다.';
+          }
+        })
+        .catch(() => {
+          hideAllSections();
+          document.getElementById('reportSection').classList.remove('hidden');
+          document.getElementById('homeButton').classList.remove('hidden');
+          document.getElementById('reportMsg').textContent = '성적표 로드 중 오류';
+        });
+    };
 
-@app.route("/api/check\_exam")
-def check\_exam():
-exam = request.args.get("exam", "").strip()
-user\_id = request.args.get("id", "").strip()
-student\_dir = DATA\_DIR / exam / "student\_answer"
-if not student\_dir.exists():
-return jsonify({"registered": False, "error": "응시 정보가 없습니다."})
-for csv\_file in student\_dir.glob("\*.csv"):
-with open(csv\_file, encoding="utf-8") as f:
-reader = csv.DictReader(f)
-for row in reader:
-name = row\.get("이름", "").strip()
-phone = row\.get("전화번호", "").strip()
-digits = "".join(filter(str.isdigit, phone))
-identifier = name + digits\[-8:]
-if identifier == user\_id:
-return jsonify({"registered": True})
-return jsonify({"registered": False, "error": "응시 정보가 없습니다."})
+    document.getElementById('menuReview').onclick = () => {
+      hideAllSections();
+      document.getElementById('reviewSection').classList.remove('hidden');
+      document.getElementById('homeButton').classList.remove('hidden');
+    };
 
-# 성적표 이미지 URL 제공
+    document.getElementById('menuQuiz').onclick = () => {
+      hideAllSections();
+      document.getElementById('quizSection').classList.remove('hidden');
+      document.getElementById('homeButton').classList.remove('hidden');
+    };
 
-@app.route("/api/reportcard")
-def reportcard():
-exam = request.args.get("exam", "").strip()
-user\_id = request.args.get("id", "").strip()
-report\_dir = DATA\_DIR / exam / "report\_card"
-if not report\_dir.exists():
-return jsonify({"error": "성적표를 찾을 수 없습니다."}), 404
-for img in report\_dir.rglob("\*.png"):
-if user\_id in img.name:
-return jsonify({"url": f"/api/reportcard/image?path={img.as\_posix()}"})
-return jsonify({"error": "성적표를 찾을 수 없습니다."}), 404
-
-# 성적표 이미지 서빙
-
-@app.route("/api/reportcard/image")
-def reportcard\_image():
-path = request.args.get("path", "")
-img = Path(path)
-if img.exists():
-return send\_from\_directory(str(img.parent), img.name)
-abort(404)
-
-# 틀린 문제 다시 풀기 & OX 퀴즈 (플레이스홀더)
-
-@app.route("/api/review")
-def review():
-return jsonify({"error": "미구현 기능입니다."}), 501
-
-@app.route("/api/quiz")
-def quiz():
-return jsonify({"error": "미구현 기능입니다."}), 501
-
-# 앱 실행
-
-if **name** == "**main**":
-app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-```
-```
+    // 공통 함수
+    function hideAllSections() {
+      ['loginSection','examSection','menuSection','reportSection','reviewSection','quizSection']
+        .forEach(id => document.getElementById(id).classList.add('hidden'));
+    }
+    function clearMessages() {
+      ['loginMsg','examMsg','menuMsg','reportMsg'].forEach(id => {
+        document.getElementById(id).textContent = '';
+      });
+    }
+  </script>
+</body>
+</html>
