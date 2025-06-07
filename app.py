@@ -15,7 +15,7 @@ STUDENT\_CSV = DATA\_DIR / "student\_list.csv"
 student\_ids = set()
 with open(STUDENT\_CSV, encoding="utf-8") as f:
 reader = csv.reader(f)
-next(reader, None)  # 헤더가 있으면 건너뛰기
+next(reader, None)
 for row in reader:
 raw\_id = row\[0].lstrip("\ufeff").strip()
 student\_ids.add(raw\_id)
@@ -116,3 +116,6 @@ return jsonify({"error": "미구현 기능입니다."}), 501
 
 if **name** == "**main**":
 app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
+```
+```
