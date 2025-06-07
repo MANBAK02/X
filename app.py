@@ -30,7 +30,8 @@ if STUDENT_LIST_CSV.exists():
 # 2) 회차별 응시자 ID 집합 생성
 exam_ids = {}
 for exam_dir in DATA_DIR.iterdir():
-    if not exam_dir.is_dir(): continue
+    if not exam_dir.is_dir():
+        continue
     ans_dir = exam_dir / 'student_answer'
     ids = set()
     if ans_dir.is_dir():
@@ -81,21 +82,23 @@ def api_reportcard():
         return jsonify(url=url)
     return jsonify(error='성적표를 찾을 수 없습니다.')
 
-# 틀린 문제 다시 풀기
+# 틀린 문제 다시 풀기 (debug 모드 지원)
 @app.route('/api/review')
 def api_review():
-    exam = request.args.get('exam','').strip()
-    user_id = request.args.get('id','').strip()
+    exam      = request.args.get('exam','').strip()
+    user_id   = request.args.get('id','').strip()
+    debug_mode= request.args.get('debug','').lower() in ('1','true','debug')
 
-    # 정답 로드
+    # 1) 정답 로드
     ans_path = DATA_DIR / exam / 'answer' / 'A.csv'
     if not ans_path.exists():
         return jsonify(error='정답 파일이 없습니다.'), 404
-    raw = pd.read_csv(ans_path, header=None, dtype=str)
-    ans_df = raw.iloc[1:,1:2]  # 정답 컬럼만
+    raw     = pd.read_csv(ans_path, header=None, dtype=str)
+    ans_df  = raw.iloc[1:, 1:2]       # 정답만
     ans_df.columns = ['정답']
+    ans_list = ans_df['정답'].tolist()
 
-    # 학생 답안 로드
+    # 2) 학생 답안 로드
     stud_dir = DATA_DIR / exam / 'student_answer'
     student_answers = None
     for csv_file in stud_dir.glob('*.csv'):
@@ -103,25 +106,41 @@ def api_review():
         for row in df.itertuples(index=False):
             sid = str(row[0]).strip() + str(row[1]).strip()[-4:]
             if sid == user_id:
-                student_answers = list(row)[2:2+len(ans_df)]
+                student_answers = list(row)[2:2+len(ans_list)]
                 break
-        if student_answers: break
-
+        if student_answers:
+            break
     if student_answers is None:
         return jsonify(error='응시 정보가 없습니다.'), 404
 
-    # 채점 및 틀린 문제 수집
+    # 3) 채점 및 틀린 문제 수집
     wrong_list = []
+    comparisons = []
     for i, stud in enumerate(student_answers):
-        correct = str(ans_df.iat[i,0]).strip()
-        s = str(stud).strip()
-        if not s.isdigit() or s != correct:
-            qnum = i + 1
+        correct = ans_list[i].strip()
+        s       = str(stud).strip()
+        is_correct = (s.isdigit() and s == correct)
+        comparisons.append({
+            'question': i+1,
+            'student': s,
+            'correct': correct,
+            'is_correct': is_correct
+        })
+        if not is_correct:
             wrong_list.append({
-                'question': qnum,
-                'image': f'/problem_images/{exam}/{qnum}.png'
+                'question': i+1,
+                'image': f'/problem_images/{exam}/{i+1}.png'
             })
-    return jsonify(wrongList=wrong_list)
+
+    # 4) 결과 반환
+    result = {'wrongList': wrong_list}
+    if debug_mode:
+        result['debug'] = {
+            'ans_list': ans_list,
+            'student_answers': student_answers,
+            'comparisons': comparisons
+        }
+    return jsonify(result)
 
 # 문제 이미지 서빙
 @app.route('/problem_images/<exam>/<path:filename>')
