@@ -30,8 +30,7 @@ if STUDENT_LIST_CSV.exists():
 # 2) 회차별 응시자 ID 집합 생성
 exam_ids = {}
 for exam_dir in DATA_DIR.iterdir():
-    if not exam_dir.is_dir():
-        continue
+    if not exam_dir.is_dir(): continue
     ans_dir = exam_dir / 'student_answer'
     ids = set()
     if ans_dir.is_dir():
@@ -93,7 +92,7 @@ def api_review():
     if not ans_path.exists():
         return jsonify(error='정답 파일이 없습니다.'), 404
     raw = pd.read_csv(ans_path, header=None, dtype=str)
-    ans_df = raw.iloc[1:,1:2]  # 정답 컬럼만 사용
+    ans_df = raw.iloc[1:,1:2]  # 정답 컬럼만
     ans_df.columns = ['정답']
 
     # 학생 답안 로드
@@ -106,8 +105,8 @@ def api_review():
             if sid == user_id:
                 student_answers = list(row)[2:2+len(ans_df)]
                 break
-        if student_answers:
-            break
+        if student_answers: break
+
     if student_answers is None:
         return jsonify(error='응시 정보가 없습니다.'), 404
 
@@ -117,7 +116,7 @@ def api_review():
         correct = str(ans_df.iat[i,0]).strip()
         s = str(stud).strip()
         if not s.isdigit() or s != correct:
-            qnum = i+1
+            qnum = i + 1
             wrong_list.append({
                 'question': qnum,
                 'image': f'/problem_images/{exam}/{qnum}.png'
@@ -147,5 +146,3 @@ def serve_frontend(path):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT',5000)), debug=True)
-
-

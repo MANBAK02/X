@@ -65,13 +65,11 @@
     .menu-button {
       background: #28a745;
       margin-bottom: 0.75rem;
-    }
-    .menu-button:nth-child(2) { background: #ffc107; }
-    .menu-button:nth-child(3) { background: #dc3545; }
-    .menu-button {
       color: white;
       font-size: 1rem;
     }
+    .menu-button:nth-child(2) { background: #ffc107; }
+    .menu-button:nth-child(3) { background: #dc3545; }
     /* 리포트 카드 이미지 */
     .report-img {
       display: block;
@@ -117,9 +115,9 @@
 </head>
 <body>
   <div class="container">
-    <!-- “처음으로” 버튼 (로그인/메인 제외 나머지 페이지에서만 보이도록 JS가 제어) -->
+    <!-- “처음으로” 버튼 (로그인/메인 제외 나머지 페이지에서만 JS 제어) -->
     <div id="homeButton" class="home-button hidden">
-      <img src="icons/home.png" alt="Home 아이콘"> 
+      <img src="icons/home.png" alt="Home 아이콘">
       <span>처음으로</span>
     </div>
 
@@ -140,12 +138,12 @@
       <p id="examMsg" class="error"></p>
     </div>
 
-    <!-- ③ 메뉴 페이지 (1. 내 성적표 / 2. 틀린 문제 다시 풀기 / 3. 틀린 문제 OX 퀴즈) -->
+    <!-- ③ 메뉴 페이지 -->
     <div id="menuSection" class="hidden">
       <h1>GAIA 모의고사 복습 사이트</h1>
-      <button class="menu-button" id="menuReport">1. 내 성적표 확인</button>
-      <button class="menu-button" id="menuReview">2. 틀린 문제 다시 풀기</button>
-      <button class="menu-button" id="menuQuiz">3. 틀린 문제 O/X 퀴즈</button>
+      <button id="menuReport" class="menu-button">1. 내 성적표 확인</button>
+      <button id="menuReview" class="menu-button">2. 틀린 문제 다시 풀기</button>
+      <button id="menuQuiz" class="menu-button">3. 틀린 문제 O/X 퀴즈</button>
       <p id="menuMsg" class="error"></p>
     </div>
 
@@ -185,7 +183,7 @@
         .forEach(id => document.getElementById(id).textContent = '');
     }
 
-    // 로그인
+    // 1) 로그인
     document.getElementById('loginBtn').onclick = () => {
       clearMessages();
       const id = document.getElementById('loginId').value.trim();
@@ -200,6 +198,7 @@
             currentId = id;
             hideAllSections();
             document.getElementById('examSection').classList.remove('hidden');
+            loadExams(); // ★ 회차 목록 로드
           } else {
             document.getElementById('loginMsg').textContent = '인증되지 않은 ID입니다';
           }
@@ -209,7 +208,7 @@
         });
     };
 
-    // 회차 불러오기 & 선택
+    // 2) 회차 목록 불러오기
     function loadExams() {
       fetch('/api/exams')
         .then(res => res.json())
@@ -256,7 +255,7 @@
         });
     };
 
-    // 메뉴 – 성적표
+    // 3) 메뉴 – 성적표
     document.getElementById('menuReport').onclick = () => {
       hideAllSections();
       document.getElementById('reportSection').classList.remove('hidden');
@@ -266,7 +265,7 @@
           if (data.url) {
             document.getElementById('reportImage').src = data.url;
             document.getElementById('reportMsg').textContent = '';
-          } else { 
+          } else {
             document.getElementById('reportMsg').textContent = data.error || '성적표를 찾을 수 없습니다.';
           }
         })
@@ -275,7 +274,7 @@
         });
     };
 
-    // 메뉴 – 틀린 문제 다시 풀기
+    // 4) 메뉴 – 틀린 문제 다시 풀기
     document.getElementById('menuReview').onclick = () => {
       hideAllSections();
       clearMessages();
@@ -302,14 +301,14 @@
         });
     };
 
-    // 메뉴 – OX 퀴즈
+    // 5) 메뉴 – OX 퀴즈 (준비 중)
     document.getElementById('menuQuiz').onclick = () => {
       hideAllSections();
       document.getElementById('quizSection').classList.remove('hidden');
       document.getElementById('homeButton').classList.remove('hidden');
     };
 
-    // 홈 버튼
+    // “처음으로” 버튼
     document.getElementById('homeButton').onclick = () => {
       hideAllSections();
       clearMessages();
@@ -319,3 +318,4 @@
   </script>
 </body>
 </html>
+
