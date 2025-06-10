@@ -24,39 +24,20 @@
     /* 리뷰 - 문제 화면 */
     #questionImage { display:block; max-width:100%; margin:1rem auto; border:1px solid #ccc; border-radius:4px; }
     #choiceButtons button {
-      display:inline-block;
-      width:18%;
-      margin:1%;
-      padding:.75rem 0;
-      font-size:1rem;
-      border:1px solid #007bff;
-      border-radius:4px;
-      background:white;
-      color:#007bff;
-      cursor:pointer;
+      display:inline-block; width:18%; margin:1%; padding:.75rem 0;
+      font-size:1rem; border:1px solid #007bff; border-radius:4px;
+      background:white; color:#007bff; cursor:pointer;
     }
     #skipButton {
-      display:block;
-      margin:1rem auto;
-      padding:.75rem;
-      background:#6c757d;
-      color:white;
-      border:none;
-      border-radius:4px;
-      cursor:pointer;
+      display:block; margin:1rem auto; padding:.75rem;
+      background:#6c757d; color:white; border:none; border-radius:4px; cursor:pointer;
     }
 
     /* 리뷰 - 피드백 화면 */
     #feedback { text-align:center; font-size:1.1rem; margin-top:1rem; }
     #retryButton, #explainButton {
-      display:block;
-      width:100%;
-      padding:.75rem;
-      margin: .5rem 0;
-      font-size:1rem;
-      border:none;
-      border-radius:4px;
-      cursor:pointer;
+      display:block; width:100%; padding:.75rem; margin:.5rem 0; font-size:1rem;
+      border:none; border-radius:4px; cursor:pointer;
     }
     #retryButton { background:#007bff; color:white; }
     #explainButton { background:#17a2b8; color:white; }
@@ -66,14 +47,14 @@
   <div class="container">
     <!-- 홈 버튼 -->
     <div id="homeButton" class="home-button hidden">
-      <img src="icons/home.png" alt="Home"><span>처음으로</span>
+      <img src="icons/home.png" alt="Home"> <span>처음으로</span>
     </div>
 
     <!-- ① 로그인 페이지 -->
     <div id="loginSection">
       <h1>GAIA 모의고사 복습 사이트</h1>
       <img src="globe.gif" class="top-gif" alt="Globe">
-      <input type="text" id="loginId" placeholder="리클래스 ID 입력">
+      <input id="loginId" placeholder="리클래스 ID 입력">
       <button id="loginBtn">로그인</button>
       <p id="loginMsg" class="error"></p>
     </div>
@@ -106,7 +87,7 @@
     <div id="reviewSection" class="hidden">
       <h1>틀린 문제 다시 풀기</h1>
       
-      <!-- 문제 화면: 문제 이미지 + 선택지 + SKIP -->
+      <!-- 문제 화면 -->
       <div id="reviewQuestionSection">
         <img id="questionImage" class="hidden" alt="문제 이미지">
         <div id="choiceButtons"></div>
@@ -114,7 +95,7 @@
         <p id="reviewMsg" class="error"></p>
       </div>
 
-      <!-- 피드백 화면: 피드백 + 버튼 -->
+      <!-- 피드백 화면 -->
       <div id="reviewFeedbackSection" class="hidden">
         <p id="feedback"></p>
         <button id="retryButton" class="hidden">다시 풀어보기</button>
@@ -129,8 +110,7 @@
   </div>
 
   <script>
-    let currentId = '', currentExam = '';
-    let wrongList = [], currentWrongIndex = 0;
+    let currentId = '', currentExam = '', wrongList = [], currentWrongIndex = 0;
 
     function hideAllSections() {
       ['loginSection','examSection','menuSection','reportSection','reviewSection','quizSection']
@@ -142,18 +122,21 @@
     }
     function hideReviewUI() {
       document.getElementById('questionImage').classList.add('hidden');
-      document.querySelectorAll('#choiceButtons button').forEach(b=>b.remove());
+      document.querySelectorAll('#choiceButtons button').forEach(b => b.remove());
       document.getElementById('skipButton').classList.add('hidden');
       document.getElementById('feedback').textContent = '';
       document.getElementById('retryButton').classList.add('hidden');
       document.getElementById('explainButton').classList.add('hidden');
     }
 
-    // 로그인
+    // 1) 로그인
     document.getElementById('loginBtn').onclick = () => {
       clearMessages(); hideReviewUI();
       const id = document.getElementById('loginId').value.trim();
-      if (!id) { document.getElementById('loginMsg').textContent = 'ID를 입력하세요'; return; }
+      if (!id) {
+        document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
+        return;
+      }
       fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
         .then(r => r.json()).then(d => {
           if (d.authenticated) {
@@ -164,23 +147,32 @@
           } else {
             document.getElementById('loginMsg').textContent = '인증되지 않은 ID입니다';
           }
-        }).catch(() => document.getElementById('loginMsg').textContent = '인증 오류');
+        })
+        .catch(() => document.getElementById('loginMsg').textContent = '인증 오류');
     };
 
-    // 회차 목록
+    // 2) 회차 로드
     function loadExams() {
-      fetch('/api/exams').then(r => r.json()).then(exs => {
-        const sel = document.getElementById('examSelect'); sel.innerHTML = '';
-        if (!exs.length) { sel.innerHTML = '<option>회차없음</option>'; return; }
-        exs.forEach(e => sel.add(new Option(e, e)));
-      }).catch(() => document.getElementById('examMsg').textContent = '회차 로드 실패');
+      fetch('/api/exams')
+        .then(r => r.json()).then(exs => {
+          const sel = document.getElementById('examSelect');
+          sel.innerHTML = '';
+          if (!exs.length) {
+            sel.innerHTML = '<option>회차없음</option>';
+            return;
+          }
+          exs.forEach(e => sel.add(new Option(e, e)));
+        })
+        .catch(() => document.getElementById('examMsg').textContent = '회차 로드 실패');
     }
 
-    // 회차 선택
     document.getElementById('examBtn').onclick = () => {
       clearMessages(); hideReviewUI();
       const ex = document.getElementById('examSelect').value;
-      if (!ex) { document.getElementById('examMsg').textContent = '회차 선택'; return; }
+      if (!ex) {
+        document.getElementById('examMsg').textContent = '회차 선택';
+        return;
+      }
       fetch(`/api/check_exam?exam=${encodeURIComponent(ex)}&id=${encodeURIComponent(currentId)}`)
         .then(r => r.json()).then(d => {
           if (d.registered) {
@@ -191,10 +183,11 @@
           } else {
             document.getElementById('examMsg').textContent = d.error;
           }
-        }).catch(() => document.getElementById('examMsg').textContent = '응시 확인 오류');
+        })
+        .catch(() => document.getElementById('examMsg').textContent = '응시 확인 오류');
     };
 
-    // 틀린 문제 다시 풀기 시작
+    // 3) 틀린 문제 다시 풀기 시작
     document.getElementById('menuReview').onclick = () => {
       hideAllSections(); clearMessages(); hideReviewUI();
       document.getElementById('reviewSection').classList.remove('hidden');
@@ -204,17 +197,16 @@
           wrongList = d.wrongList.map(x => x.question);
           currentWrongIndex = 0;
           showReviewQuestion(wrongList[0]);
-        }).catch(() => document.getElementById('reviewMsg').textContent = '불러오기 오류');
+        })
+        .catch(() => document.getElementById('reviewMsg').textContent = '불러오기 오류');
     };
 
-    // 문제 화면
+    // 4) 문제 화면
     function showReviewQuestion(qno) {
       clearMessages(); hideReviewUI();
-      // 문제 이미지
       const qi = document.getElementById('questionImage');
       qi.src = `/problem_images/${encodeURIComponent(currentExam)}/${qno}.png`;
       qi.classList.remove('hidden');
-      // 선택지
       const cb = document.getElementById('choiceButtons');
       [1,2,3,4,5].forEach(ch => {
         const btn = document.createElement('button');
@@ -222,42 +214,34 @@
         btn.onclick = () => handleAnswerClick(qno, ch);
         cb.appendChild(btn);
       });
-      // SKIP
       const skip = document.getElementById('skipButton');
       skip.classList.remove('hidden');
       skip.onclick = nextQuestion;
-      // 피드백 + 버튼 숨기기
-      document.getElementById('feedback').textContent = '';
-      document.getElementById('retryButton').classList.add('hidden');
-      document.getElementById('explainButton').classList.add('hidden');
     }
 
-    // 답안 제출
+    // 5) 답안 제출
     function handleAnswerClick(qno, sel) {
       clearMessages();
       fetch(`/api/submit_review?exam=${encodeURIComponent(currentExam)}&question=${qno}&answer=${sel}`)
         .then(r => r.json()).then(d => {
           document.getElementById('feedback').textContent = d.correct ? '정답입니다!' : '오답입니다.';
-          // 선택지 비활성화
           document.querySelectorAll('#choiceButtons button').forEach(b => b.disabled = true);
-          // 다시 풀기 / 해설 버튼
           const retry = document.getElementById('retryButton');
           retry.classList.remove('hidden');
           retry.onclick = () => showReviewQuestion(qno);
           const explain = document.getElementById('explainButton');
           explain.classList.remove('hidden');
           explain.onclick = () => {
-            document.getElementById('feedback').textContent = ''; 
-            document.getElementById('questionImage').classList.add('hidden');
+            // 해설 이미지 표시
             const ei = document.getElementById('questionImage');
-            // 해설 이미지는 exp_images 폴더에서
-            document.getElementById('questionImage').src = `/exp_images/${encodeURIComponent(currentExam)}/${qno}.png`;
-            document.getElementById('questionImage').classList.remove('hidden');
+            ei.src = `/exp_images/${encodeURIComponent(currentExam)}/${qno}.png`;
+            ei.classList.remove('hidden');
           };
-        }).catch(() => document.getElementById('feedback').textContent = '오류');
+        })
+        .catch(() => document.getElementById('feedback').textContent = '오류');
     }
 
-    // 다음 문제
+    // 6) 다음 문제
     function nextQuestion() {
       currentWrongIndex++;
       if (currentWrongIndex < wrongList.length) {
@@ -267,10 +251,32 @@
       }
     }
 
-    // 홈, 메뉴Report, 메뉴Quiz 버튼 로직은 기존과 동일...
-    document.getElementById('menuReport').onclick = /* 생략 */;
-    document.getElementById('menuQuiz').onclick   = /* 생략 */;
-    document.getElementById('homeButton').onclick = /* 생략 */;
+    // 메뉴 – 내 성적표
+    document.getElementById('menuReport').onclick = () => {
+      hideAllSections();
+      document.getElementById('reportSection').classList.remove('hidden');
+      fetch(`/api/reportcard?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}`)
+        .then(r => r.json()).then(d => {
+          if (d.url) document.getElementById('reportImage').src = d.url;
+          else       document.getElementById('reportMsg').textContent = d.error;
+        })
+        .catch(() => document.getElementById('reportMsg').textContent = '로드 오류');
+    };
+
+    // 메뉴 – OX 퀴즈 (준비 중)
+    document.getElementById('menuQuiz').onclick = () => {
+      hideAllSections();
+      document.getElementById('quizSection').classList.remove('hidden');
+      document.getElementById('homeButton').classList.remove('hidden');
+    };
+
+    // 홈 버튼
+    document.getElementById('homeButton').onclick = () => {
+      hideAllSections(); clearMessages(); hideReviewUI();
+      document.getElementById('menuSection').classList.remove('hidden');
+      document.getElementById('homeButton').classList.remove('hidden');
+    };
   </script>
 </body>
 </html>
+
