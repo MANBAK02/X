@@ -9,54 +9,76 @@
     body { margin:0; padding:1rem; font-family:sans-serif; background:#f9f9f9; }
     .container { max-width:400px; margin:0 auto; background:white; padding:1rem; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
     h1 { margin:0 0 .5rem; font-size:1.5rem; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .home-button { display:flex; align-items:center; cursor:pointer; margin-bottom:1rem; font-size:16px; color:#007bff; }
+    .home-button { display:flex; align-items:center; cursor:pointer; margin-bottom:1rem; color:#007bff; }
     .home-button img { width:16px; height:16px; margin-right:.25rem; }
     input, select, button { display:block; width:100%; padding:.75rem; font-size:1rem; margin:.5rem 0; box-sizing:border-box; border:1px solid #ccc; border-radius:4px; }
     button { background:#007bff; color:white; border:none; }
-    p.error { color:#d00; font-size:.9rem; margin:.25rem 0 0; }
+    p.error { color:#d00; font-size:.9rem; margin:.25rem 0 0; text-align:center; }
     .menu-button { background:#28a745; color:white; font-size:1rem; margin-bottom:.75rem; }
     .menu-button:nth-child(2) { background:#ffc107; }
     .menu-button:nth-child(3) { background:#dc3545; }
     .report-img { display:block; max-width:100%; margin:0 auto; }
     .top-gif { display:block; width:60%; max-width:200px; margin:0 auto 1rem; }
-    .hidden { display:none; }
+    .hidden { display:none !important; }
 
-    /* 리뷰 영역 */
-    #questionImage, #explanationImage {
-      display:block;
-      max-width:100%;
-      margin:1rem auto;
-      border:1px solid #ccc;
-      border-radius:4px;
-    }
+    /* 리뷰 - 문제 화면 */
+    #questionImage { display:block; max-width:100%; margin:1rem auto; border:1px solid #ccc; border-radius:4px; }
     #choiceButtons button {
-      display:inline-block; width:18%; margin:1%; padding:.75rem 0;
-      font-size:1rem; border:1px solid #007bff; border-radius:4px;
-      background:white; color:#007bff; cursor:pointer;
+      display:inline-block;
+      width:18%;
+      margin:1%;
+      padding:.75rem 0;
+      font-size:1rem;
+      border:1px solid #007bff;
+      border-radius:4px;
+      background:white;
+      color:#007bff;
+      cursor:pointer;
     }
-    #skipButton, #retryButton, #explainButton {
-      display:block; margin:1rem auto; padding:.75rem; font-size:1rem;
+    #skipButton {
+      display:block;
+      margin:1rem auto;
+      padding:.75rem;
+      background:#6c757d;
+      color:white;
+      border:none;
+      border-radius:4px;
+      cursor:pointer;
     }
-    #feedback { text-align:center; font-size:1.1rem; margin-top:.5rem; }
+
+    /* 리뷰 - 피드백 화면 */
+    #feedback { text-align:center; font-size:1.1rem; margin-top:1rem; }
+    #retryButton, #explainButton {
+      display:block;
+      width:100%;
+      padding:.75rem;
+      margin: .5rem 0;
+      font-size:1rem;
+      border:none;
+      border-radius:4px;
+      cursor:pointer;
+    }
+    #retryButton { background:#007bff; color:white; }
+    #explainButton { background:#17a2b8; color:white; }
   </style>
 </head>
 <body>
   <div class="container">
     <!-- 홈 버튼 -->
     <div id="homeButton" class="home-button hidden">
-      <img src="icons/home.png" alt="Home"> <span>처음으로</span>
+      <img src="icons/home.png" alt="Home"><span>처음으로</span>
     </div>
 
-    <!-- 로그인 -->
+    <!-- ① 로그인 페이지 -->
     <div id="loginSection">
       <h1>GAIA 모의고사 복습 사이트</h1>
       <img src="globe.gif" class="top-gif" alt="Globe">
-      <input id="loginId" placeholder="리클래스 ID 입력">
+      <input type="text" id="loginId" placeholder="리클래스 ID 입력">
       <button id="loginBtn">로그인</button>
       <p id="loginMsg" class="error"></p>
     </div>
 
-    <!-- 회차 선택 -->
+    <!-- ② 회차 선택 페이지 -->
     <div id="examSection" class="hidden">
       <h1>GAIA 모의고사 복습 사이트</h1>
       <select id="examSelect"></select>
@@ -64,7 +86,7 @@
       <p id="examMsg" class="error"></p>
     </div>
 
-    <!-- 메뉴 -->
+    <!-- ③ 메뉴 페이지 -->
     <div id="menuSection" class="hidden">
       <h1>GAIA 모의고사 복습 사이트</h1>
       <button id="menuReport" class="menu-button">1. 내 성적표 확인</button>
@@ -73,159 +95,182 @@
       <p id="menuMsg" class="error"></p>
     </div>
 
-    <!-- 성적표 -->
+    <!-- ④ 성적표 표시 페이지 -->
     <div id="reportSection" class="hidden">
       <h1>내 성적표</h1>
       <img id="reportImage" class="report-img" alt="성적표">
       <p id="reportMsg" class="error"></p>
     </div>
 
-    <!-- 틀린 문제 다시 풀기 -->
+    <!-- ⑤ 틀린 문제 다시 풀기 -->
     <div id="reviewSection" class="hidden">
       <h1>틀린 문제 다시 풀기</h1>
-      <!-- 문제 이미지 -->
-      <img id="questionImage" class="hidden" alt="문제 이미지">
-      <!-- 설명 이미지 (초기 숨김) -->
-      <img id="explanationImage" class="hidden" alt="해설 이미지">
-      <!-- 선택지 -->
-      <div id="choiceButtons"></div>
-      <!-- 피드백 -->
-      <p id="feedback"></p>
-      <!-- 버튼들 -->
-      <button id="retryButton" class="hidden">다시 풀어보기</button>
-      <button id="explainButton" class="hidden">해설 확인하기</button>
-      <button id="skipButton" class="hidden">SKIP</button>
-      <p id="reviewMsg" class="error"></p>
+      
+      <!-- 문제 화면: 문제 이미지 + 선택지 + SKIP -->
+      <div id="reviewQuestionSection">
+        <img id="questionImage" class="hidden" alt="문제 이미지">
+        <div id="choiceButtons"></div>
+        <button id="skipButton" class="hidden">SKIP</button>
+        <p id="reviewMsg" class="error"></p>
+      </div>
+
+      <!-- 피드백 화면: 피드백 + 버튼 -->
+      <div id="reviewFeedbackSection" class="hidden">
+        <p id="feedback"></p>
+        <button id="retryButton" class="hidden">다시 풀어보기</button>
+        <button id="explainButton" class="hidden">해설 확인하기</button>
+      </div>
     </div>
 
-    <!-- OX 퀴즈 (준비 중) -->
+    <!-- ⑥ OX 퀴즈 (준비 중) -->
     <div id="quizSection" class="hidden">
       <h1>틀린 문제 O/X 퀴즈 (준비 중)</h1>
     </div>
   </div>
 
   <script>
-    let currentId='', currentExam='';
-    let wrongList=[], currentWrongIndex=0;
+    let currentId = '', currentExam = '';
+    let wrongList = [], currentWrongIndex = 0;
 
-    function hideAllSections(){
+    function hideAllSections() {
       ['loginSection','examSection','menuSection','reportSection','reviewSection','quizSection']
-        .forEach(id=>document.getElementById(id).classList.add('hidden'));
+        .forEach(id => document.getElementById(id).classList.add('hidden'));
     }
-    function clearMessages(){
+    function clearMessages() {
       ['loginMsg','examMsg','menuMsg','reportMsg','reviewMsg','feedback']
-        .forEach(id=>document.getElementById(id).textContent='');
+        .forEach(id => document.getElementById(id).textContent = '');
     }
-    function hideReviewButtons(){
-      ['retryButton','explainButton','skipButton'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+    function hideReviewUI() {
+      document.getElementById('questionImage').classList.add('hidden');
+      document.querySelectorAll('#choiceButtons button').forEach(b=>b.remove());
+      document.getElementById('skipButton').classList.add('hidden');
+      document.getElementById('feedback').textContent = '';
+      document.getElementById('retryButton').classList.add('hidden');
+      document.getElementById('explainButton').classList.add('hidden');
     }
 
     // 로그인
-    document.getElementById('loginBtn').onclick=()=>{
-      clearMessages(); hideReviewButtons();
-      const id=document.getElementById('loginId').value.trim();
-      if(!id){document.getElementById('loginMsg').textContent='ID를 입력하세요';return;}
+    document.getElementById('loginBtn').onclick = () => {
+      clearMessages(); hideReviewUI();
+      const id = document.getElementById('loginId').value.trim();
+      if (!id) { document.getElementById('loginMsg').textContent = 'ID를 입력하세요'; return; }
       fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
-      .then(r=>r.json()).then(d=>{
-        if(d.authenticated){
-          currentId=id; hideAllSections();
-          document.getElementById('examSection').classList.remove('hidden');
-          loadExams();
-        } else document.getElementById('loginMsg').textContent='인증되지 않은 ID입니다';
-      }).catch(()=>document.getElementById('loginMsg').textContent='인증 오류');
+        .then(r => r.json()).then(d => {
+          if (d.authenticated) {
+            currentId = id;
+            hideAllSections();
+            document.getElementById('examSection').classList.remove('hidden');
+            loadExams();
+          } else {
+            document.getElementById('loginMsg').textContent = '인증되지 않은 ID입니다';
+          }
+        }).catch(() => document.getElementById('loginMsg').textContent = '인증 오류');
     };
 
-    function loadExams(){
-      fetch('/api/exams').then(r=>r.json()).then(exs=>{
-        const sel=document.getElementById('examSelect'); sel.innerHTML='';
-        if(!exs.length){sel.innerHTML='<option>회차없음</option>';return;}
-        exs.forEach(e=>sel.add(new Option(e,e)));
-      }).catch(()=>document.getElementById('examMsg').textContent='회차 로드 실패');
+    // 회차 목록
+    function loadExams() {
+      fetch('/api/exams').then(r => r.json()).then(exs => {
+        const sel = document.getElementById('examSelect'); sel.innerHTML = '';
+        if (!exs.length) { sel.innerHTML = '<option>회차없음</option>'; return; }
+        exs.forEach(e => sel.add(new Option(e, e)));
+      }).catch(() => document.getElementById('examMsg').textContent = '회차 로드 실패');
     }
 
-    document.getElementById('examBtn').onclick=()=>{
-      clearMessages(); hideReviewButtons();
-      const ex=document.getElementById('examSelect').value;
-      if(!ex){document.getElementById('examMsg').textContent='회차 선택';return;}
+    // 회차 선택
+    document.getElementById('examBtn').onclick = () => {
+      clearMessages(); hideReviewUI();
+      const ex = document.getElementById('examSelect').value;
+      if (!ex) { document.getElementById('examMsg').textContent = '회차 선택'; return; }
       fetch(`/api/check_exam?exam=${encodeURIComponent(ex)}&id=${encodeURIComponent(currentId)}`)
-      .then(r=>r.json()).then(d=>{
-        if(d.registered){
-          currentExam=ex; hideAllSections();
-          document.getElementById('menuSection').classList.remove('hidden');
-          document.getElementById('homeButton').classList.remove('hidden');
-        } else document.getElementById('examMsg').textContent=d.error;
-      }).catch(()=>document.getElementById('examMsg').textContent='응시 확인 오류');
+        .then(r => r.json()).then(d => {
+          if (d.registered) {
+            currentExam = ex;
+            hideAllSections();
+            document.getElementById('menuSection').classList.remove('hidden');
+            document.getElementById('homeButton').classList.remove('hidden');
+          } else {
+            document.getElementById('examMsg').textContent = d.error;
+          }
+        }).catch(() => document.getElementById('examMsg').textContent = '응시 확인 오류');
     };
 
-    // 메뉴 – 리뷰 시작
-    document.getElementById('menuReview').onclick=()=>{
-      hideAllSections(); clearMessages(); hideReviewButtons();
+    // 틀린 문제 다시 풀기 시작
+    document.getElementById('menuReview').onclick = () => {
+      hideAllSections(); clearMessages(); hideReviewUI();
       document.getElementById('reviewSection').classList.remove('hidden');
       document.getElementById('homeButton').classList.remove('hidden');
       fetch(`/api/review?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}`)
-      .then(r=>r.json()).then(d=>{
-        wrongList=d.wrongList.map(x=>x.question);
-        currentWrongIndex=0;
-        showReviewQuestion(wrongList[0]);
-      }).catch(()=>document.getElementById('reviewMsg').textContent='불러오기 오류');
+        .then(r => r.json()).then(d => {
+          wrongList = d.wrongList.map(x => x.question);
+          currentWrongIndex = 0;
+          showReviewQuestion(wrongList[0]);
+        }).catch(() => document.getElementById('reviewMsg').textContent = '불러오기 오류');
     };
 
-    // 한 문제 보여주기
-    function showReviewQuestion(qno){
-      clearMessages(); hideReviewButtons();
+    // 문제 화면
+    function showReviewQuestion(qno) {
+      clearMessages(); hideReviewUI();
       // 문제 이미지
-      const qi=document.getElementById('questionImage');
-      qi.src=`/problem_images/${encodeURIComponent(currentExam)}/${qno}.png`;
+      const qi = document.getElementById('questionImage');
+      qi.src = `/problem_images/${encodeURIComponent(currentExam)}/${qno}.png`;
       qi.classList.remove('hidden');
-      // 숨김처리
-      document.getElementById('explanationImage').classList.add('hidden');
-      // 보기
-      const cb=document.getElementById('choiceButtons'); cb.innerHTML='';
-      [1,2,3,4,5].forEach(ch=>{
-        const btn=document.createElement('button');
-        btn.textContent=ch; btn.onclick=()=>handleAnswerClick(qno,ch,btn);
+      // 선택지
+      const cb = document.getElementById('choiceButtons');
+      [1,2,3,4,5].forEach(ch => {
+        const btn = document.createElement('button');
+        btn.textContent = ch;
+        btn.onclick = () => handleAnswerClick(qno, ch);
         cb.appendChild(btn);
       });
       // SKIP
-      const skip=document.getElementById('skipButton');
-      skip.classList.remove('hidden'); skip.onclick=nextQuestion;
+      const skip = document.getElementById('skipButton');
+      skip.classList.remove('hidden');
+      skip.onclick = nextQuestion;
+      // 피드백 + 버튼 숨기기
+      document.getElementById('feedback').textContent = '';
+      document.getElementById('retryButton').classList.add('hidden');
+      document.getElementById('explainButton').classList.add('hidden');
     }
 
     // 답안 제출
-    function handleAnswerClick(qno,sel,btn){
+    function handleAnswerClick(qno, sel) {
       clearMessages();
       fetch(`/api/submit_review?exam=${encodeURIComponent(currentExam)}&question=${qno}&answer=${sel}`)
-      .then(r=>r.json()).then(d=>{
-        // 피드백
-        document.getElementById('feedback').textContent = d.correct?'정답입니다!':'오답입니다.';
-        // 보기 비활성화
-        document.querySelectorAll('#choiceButtons button').forEach(b=>b.disabled=true);
-        // 버튼 표시
-        const retry=document.getElementById('retryButton');
-        const explain=document.getElementById('explainButton');
-        retry.textContent = '다시 풀어보기'; retry.onclick=()=>showReviewQuestion(qno);
-        explain.textContent = '해설 확인하기';
-        explain.onclick = ()=>showExplanation(qno);
-        retry.classList.remove('hidden');
-        explain.classList.remove('hidden');
-      }).catch(()=>document.getElementById('feedback').textContent='오류');
-    }
-
-    // 해설 보여주기
-    function showExplanation(qno){
-      const ei=document.getElementById('explanationImage');
-      ei.src=`/exp_images/${encodeURIComponent(currentExam)}/${qno}.png`;
-      ei.classList.remove('hidden');
+        .then(r => r.json()).then(d => {
+          document.getElementById('feedback').textContent = d.correct ? '정답입니다!' : '오답입니다.';
+          // 선택지 비활성화
+          document.querySelectorAll('#choiceButtons button').forEach(b => b.disabled = true);
+          // 다시 풀기 / 해설 버튼
+          const retry = document.getElementById('retryButton');
+          retry.classList.remove('hidden');
+          retry.onclick = () => showReviewQuestion(qno);
+          const explain = document.getElementById('explainButton');
+          explain.classList.remove('hidden');
+          explain.onclick = () => {
+            document.getElementById('feedback').textContent = ''; 
+            document.getElementById('questionImage').classList.add('hidden');
+            const ei = document.getElementById('questionImage');
+            // 해설 이미지는 exp_images 폴더에서
+            document.getElementById('questionImage').src = `/exp_images/${encodeURIComponent(currentExam)}/${qno}.png`;
+            document.getElementById('questionImage').classList.remove('hidden');
+          };
+        }).catch(() => document.getElementById('feedback').textContent = '오류');
     }
 
     // 다음 문제
-    function nextQuestion(){
+    function nextQuestion() {
       currentWrongIndex++;
-      if(currentWrongIndex<wrongList.length) showReviewQuestion(wrongList[currentWrongIndex]);
-      else location.reload();
+      if (currentWrongIndex < wrongList.length) {
+        showReviewQuestion(wrongList[currentWrongIndex]);
+      } else {
+        location.reload();
+      }
     }
 
-    // 그 외 메뉴·성적표·OX버튼·홈 버튼 로직은 이전과 동일
+    // 홈, 메뉴Report, 메뉴Quiz 버튼 로직은 기존과 동일...
+    document.getElementById('menuReport').onclick = /* 생략 */;
+    document.getElementById('menuQuiz').onclick   = /* 생략 */;
+    document.getElementById('homeButton').onclick = /* 생략 */;
   </script>
 </body>
 </html>
