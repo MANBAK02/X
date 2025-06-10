@@ -1,3 +1,5 @@
+# app.py
+
 import os
 import csv
 import pandas as pd
@@ -28,17 +30,14 @@ if STUDENT_LIST_CSV.exists():
 # 2) 회차별 응시자 ID 집합 생성
 exam_ids = {}
 for exam_dir in DATA_DIR.iterdir():
-    if not exam_dir.is_dir():
-        continue
+    if not exam_dir.is_dir(): continue
     ans_dir = exam_dir / 'student_answer'
     ids = set()
     if ans_dir.is_dir():
         for csv_path in ans_dir.glob('*.csv'):
             df = pd.read_csv(csv_path, header=None, dtype=str)
             for row in df.itertuples(index=False):
-                name = str(row[0]).strip()
-                phone = str(row[1]).strip()
-                sid = name + phone[-4:]
+                sid = str(row[0]).strip() + str(row[1]).strip()[-4:]
                 ids.add(sid)
     if ids:
         exam_ids[exam_dir.name] = ids
@@ -61,9 +60,8 @@ def api_check_exam():
     exam    = request.args.get('exam','').strip()
     if exam not in exam_ids:
         return jsonify(registered=False, error='존재하지 않는 회차입니다.')
-    if user_id in exam_ids[exam]:
-        return jsonify(registered=True)
-    return jsonify(registered=False, error='해당 모의고사의 응시 정보가 없습니다.')
+    return jsonify(registered=(user_id in exam_ids[exam]),
+                   error=None if user_id in exam_ids[exam] else '응시 정보가 없습니다.')
 
 # 성적표 조회
 @app.route('/api/reportcard')
@@ -78,18 +76,18 @@ def api_reportcard():
         return jsonify(url=f'/report/{exam}/{rel.as_posix()}')
     return jsonify(error='성적표를 찾을 수 없습니다.')
 
-# 틀린 문제 다시 풀기
+# 틀린 문제 리스트 조회
 @app.route('/api/review')
 def api_review():
     exam    = request.args.get('exam','').strip()
     user_id = request.args.get('id','').strip()
 
-    # 1) 정답 로드 (세 번째 열 인덱스 2 사용)
+    # 1) 정답 로드 (A.csv 3번째 열)
     ans_path = DATA_DIR / exam / 'answer' / 'A.csv'
     if not ans_path.exists():
         return jsonify(error='정답 파일이 없습니다.'), 404
     raw     = pd.read_csv(ans_path, header=None, dtype=str)
-    ans_df  = raw.iloc[1:, 2:3]      # 수정된 부분: 인덱스 2:3 → 정답 열
+    ans_df  = raw.iloc[1:, 2:3]      # 세 번째 열(정답)
     ans_df.columns = ['정답']
     ans_list = ans_df['정답'].tolist()
 
@@ -103,8 +101,7 @@ def api_review():
             if sid == user_id:
                 student_answers = list(row)[2:2+len(ans_list)]
                 break
-        if student_answers:
-            break
+        if student_answers: break
     if student_answers is None:
         return jsonify(error='응시 정보가 없습니다.'), 404
 
@@ -116,15 +113,38 @@ def api_review():
         if not s.isdigit() or s != correct:
             wrong_list.append({
                 'question': i+1,
-                'image':    f'/problem_images/{exam}/{i+1}.png'
+                'image':    f'/exp_images/{exam}/{i+1}.png'
             })
-
     return jsonify(wrongList=wrong_list)
 
-# 문제 이미지 서빙
-@app.route('/problem_images/<exam>/<path:filename>')
-def serve_problem_image(exam, filename):
-    img_dir = DATA_DIR / exam / 'problem_images'
+# 개별 문제 조회 (이미지 + 선택지)
+@app.route('/api/review_question')
+def api_review_question():
+    exam     = request.args.get('exam','').strip()
+    question = int(request.args.get('question','0'))
+    image_url = f'/exp_images/{exam}/{question}.png'
+    choices = [1,2,3,4,5]
+    return jsonify(image_url=image_url, choices=choices)
+
+# 답안 제출 및 정답 확인
+@app.route('/api/submit_review')
+def api_submit_review():
+    exam     = request.args.get('exam','').strip()
+    question = int(request.args.get('question','0'))
+    answer   = request.args.get('answer','').strip()
+
+    # A.csv 정답 로드
+    ans_path = DATA_DIR / exam / 'answer' / 'A.csv'
+    raw = pd.read_csv(ans_path, header=None, dtype=str)
+    correct = raw.iat[question, 2].strip()  # row=question, col=2
+
+    is_correct = (answer == correct)
+    return jsonify(correct=is_correct, explanation="")
+
+# exp_images 서빙
+@app.route('/exp_images/<exam>/<path:filename>')
+def serve_exp_images(exam, filename):
+    img_dir = DATA_DIR / exam / 'exp_images'
     return send_from_directory(str(img_dir), filename)
 
 # 성적표 이미지 서빙
@@ -143,8 +163,4 @@ def serve_frontend(path):
     return send_from_directory(str(FRONTEND_DIR), 'index.html')
 
 if __name__ == '__main__':
-    app.run(
-        host='0.0.0.0',
-        port=int(os.environ.get('PORT', 5000)),
-        debug=True
-    )
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT',5000)), debug=True)
