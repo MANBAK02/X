@@ -45,12 +45,9 @@
 </head>
 <body>
   <div class="container">
-    <!-- 홈 버튼 -->
     <div id="homeButton" class="home-button hidden">
       <img src="icons/home.png" alt="Home"> <span>처음으로</span>
     </div>
-
-    <!-- ① 로그인 페이지 -->
     <div id="loginSection">
       <h1>GAIA 모의고사 복습 사이트</h1>
       <img src="globe.gif" class="top-gif" alt="Globe">
@@ -58,16 +55,12 @@
       <button id="loginBtn">로그인</button>
       <p id="loginMsg" class="error"></p>
     </div>
-
-    <!-- ② 회차 선택 페이지 -->
     <div id="examSection" class="hidden">
       <h1>GAIA 모의고사 복습 사이트</h1>
       <select id="examSelect"></select>
       <button id="examBtn">회차 선택</button>
       <p id="examMsg" class="error"></p>
     </div>
-
-    <!-- ③ 메뉴 페이지 -->
     <div id="menuSection" class="hidden">
       <h1>GAIA 모의고사 복습 사이트</h1>
       <button id="menuReport" class="menu-button">1. 내 성적표 확인</button>
@@ -75,35 +68,25 @@
       <button id="menuQuiz" class="menu-button">3. 틀린 문제 O/X 퀴즈</button>
       <p id="menuMsg" class="error"></p>
     </div>
-
-    <!-- ④ 성적표 표시 페이지 -->
     <div id="reportSection" class="hidden">
       <h1>내 성적표</h1>
       <img id="reportImage" class="report-img" alt="성적표">
       <p id="reportMsg" class="error"></p>
     </div>
-
-    <!-- ⑤ 틀린 문제 다시 풀기 -->
     <div id="reviewSection" class="hidden">
       <h1>틀린 문제 다시 풀기</h1>
-      
-      <!-- 문제 화면 -->
       <div id="reviewQuestionSection">
         <img id="questionImage" class="hidden" alt="문제 이미지">
         <div id="choiceButtons"></div>
         <button id="skipButton" class="hidden">SKIP</button>
         <p id="reviewMsg" class="error"></p>
       </div>
-
-      <!-- 피드백 화면 -->
       <div id="reviewFeedbackSection" class="hidden">
         <p id="feedback"></p>
         <button id="retryButton" class="hidden">다시 풀어보기</button>
         <button id="explainButton" class="hidden">해설 확인하기</button>
       </div>
     </div>
-
-    <!-- ⑥ OX 퀴즈 (준비 중) -->
     <div id="quizSection" class="hidden">
       <h1>틀린 문제 O/X 퀴즈 (준비 중)</h1>
     </div>
@@ -129,7 +112,7 @@
       document.getElementById('explainButton').classList.add('hidden');
     }
 
-    // 1) 로그인
+    // 로그인
     document.getElementById('loginBtn').onclick = () => {
       clearMessages(); hideReviewUI();
       const id = document.getElementById('loginId').value.trim();
@@ -151,7 +134,7 @@
         .catch(() => document.getElementById('loginMsg').textContent = '인증 오류');
     };
 
-    // 2) 회차 로드
+    // 회차 로드
     function loadExams() {
       fetch('/api/exams')
         .then(r => r.json()).then(exs => {
@@ -166,6 +149,7 @@
         .catch(() => document.getElementById('examMsg').textContent = '회차 로드 실패');
     }
 
+    // 회차 선택
     document.getElementById('examBtn').onclick = () => {
       clearMessages(); hideReviewUI();
       const ex = document.getElementById('examSelect').value;
@@ -187,7 +171,7 @@
         .catch(() => document.getElementById('examMsg').textContent = '응시 확인 오류');
     };
 
-    // 3) 틀린 문제 다시 풀기 시작
+    // 틀린 문제 다시 풀기
     document.getElementById('menuReview').onclick = () => {
       hideAllSections(); clearMessages(); hideReviewUI();
       document.getElementById('reviewSection').classList.remove('hidden');
@@ -201,7 +185,7 @@
         .catch(() => document.getElementById('reviewMsg').textContent = '불러오기 오류');
     };
 
-    // 4) 문제 화면
+    // 문제 화면
     function showReviewQuestion(qno) {
       clearMessages(); hideReviewUI();
       const qi = document.getElementById('questionImage');
@@ -219,7 +203,7 @@
       skip.onclick = nextQuestion;
     }
 
-    // 5) 답안 제출
+    // 답안 제출
     function handleAnswerClick(qno, sel) {
       clearMessages();
       fetch(`/api/submit_review?exam=${encodeURIComponent(currentExam)}&question=${qno}&answer=${sel}`)
@@ -232,7 +216,7 @@
           const explain = document.getElementById('explainButton');
           explain.classList.remove('hidden');
           explain.onclick = () => {
-            // 해설 이미지 표시
+            document.getElementById('feedback').textContent = '';
             const ei = document.getElementById('questionImage');
             ei.src = `/exp_images/${encodeURIComponent(currentExam)}/${qno}.png`;
             ei.classList.remove('hidden');
@@ -241,7 +225,7 @@
         .catch(() => document.getElementById('feedback').textContent = '오류');
     }
 
-    // 6) 다음 문제
+    // 다음 문제
     function nextQuestion() {
       currentWrongIndex++;
       if (currentWrongIndex < wrongList.length) {
