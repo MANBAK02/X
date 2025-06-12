@@ -2,7 +2,7 @@ import os
 import csv
 import pandas as pd
 from pathlib import Path
-from flask import Flask, request, jsonify, send_from_directory, abort
+from flask import Flask, request, jsonify, send_from_directory
 
 BASE_DIR     = Path(__file__).parent
 FRONTEND_DIR = BASE_DIR / "frontend"
@@ -82,7 +82,7 @@ def api_review():
     if not ans_path.exists():
         return jsonify(error='정답 파일이 없습니다.'), 404
     raw      = pd.read_csv(ans_path, header=None, dtype=str)
-    ans_list = raw.iloc[1:, 2].tolist()  # 정답은 세 번째 열
+    ans_list = raw.iloc[1:, 2].tolist()
 
     stud_dir = DATA_DIR / exam / 'student_answer'
     student_answers = None
@@ -121,9 +121,8 @@ def api_submit_review():
     exam     = request.args.get('exam','').strip()
     question = int(request.args.get('question','').strip())
     answer   = request.args.get('answer','').strip()
-
-    raw     = pd.read_csv(DATA_DIR / exam / 'answer' / 'A.csv', header=None, dtype=str)
-    correct = raw.iat[question, 2].strip()
+    raw      = pd.read_csv(DATA_DIR / exam / 'answer' / 'A.csv', header=None, dtype=str)
+    correct  = raw.iat[question, 2].strip()
     return jsonify(correct=(answer == correct))
 
 # ── OX 퀴즈용 문장(+정오) 반환 ──
@@ -131,8 +130,6 @@ def api_submit_review():
 def api_quiz_sentences():
     exam     = request.args.get('exam','').strip()
     question = request.args.get('question','').strip()
-
-    # 이제 data/<exam>/OX/OX.csv 에서 읽어 옵니다
     csv_path = DATA_DIR / exam / 'OX' / 'OX.csv'
     if not csv_path.exists():
         return jsonify(error='OX.csv 파일이 없습니다.'), 404
@@ -141,9 +138,7 @@ def api_quiz_sentences():
     with open(csv_path, encoding='utf-8') as f:
         reader = csv.reader(f)
         for row in reader:
-            if not row or len(row) < 3:
-                continue
-            if str(row[0]).strip() == question:
+            if len(row) >= 3 and str(row[0]).strip() == question:
                 sentences.append({
                     'text':    row[1].strip(),
                     'correct': row[2].strip().upper() == 'O'
@@ -154,13 +149,13 @@ def api_quiz_sentences():
 
     return jsonify(sentences=sentences)
 
-# ── 디버그: problem_images 폴더 파일 목록 ──
-@app.route('/api/debug/problem_images_files')
-def api_debug_problem_images_files():
+# ── 디버그: OX 폴더 파일 목록 ──
+@app.route('/api/debug/ox_files')
+def api_debug_ox_files():
     exam = request.args.get('exam','').strip()
-    d    = DATA_DIR / exam / 'problem_images'
-    if not d.is_dir():
-        return jsonify(error='problem_images 폴더가 없습니다.'), 404
+    d    = DATA_DIR / exam / 'OX'
+    if not d.exists():
+        return jsonify(error='OX 폴더가 없습니다.'), 404
     files = [p.name for p in d.iterdir() if p.is_file()]
     return jsonify(files=sorted(files))
 
@@ -193,3 +188,4 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0',
             port=int(os.environ.get('PORT', 5000)),
             debug=True)
+
