@@ -1,5 +1,3 @@
-# app.py
-
 import os
 import csv
 import pandas as pd
@@ -30,7 +28,8 @@ if STUDENT_LIST_CSV.exists():
 # 2) 회차별 응시자 ID 집합 생성
 exam_ids = {}
 for exam_dir in DATA_DIR.iterdir():
-    if not exam_dir.is_dir(): continue
+    if not exam_dir.is_dir():
+        continue
     ans_dir = exam_dir / 'student_answer'
     ids = set()
     if ans_dir.is_dir():
@@ -82,16 +81,12 @@ def api_review():
     exam    = request.args.get('exam','').strip()
     user_id = request.args.get('id','').strip()
 
-    # 1) 정답 로드 (A.csv 3번째 열)
     ans_path = DATA_DIR / exam / 'answer' / 'A.csv'
     if not ans_path.exists():
         return jsonify(error='정답 파일이 없습니다.'), 404
-    raw     = pd.read_csv(ans_path, header=None, dtype=str)
-    ans_df  = raw.iloc[1:, 2:3]      # 세 번째 열(정답)
-    ans_df.columns = ['정답']
-    ans_list = ans_df['정답'].tolist()
+    raw      = pd.read_csv(ans_path, header=None, dtype=str)
+    ans_list = raw.iloc[1:, 2].tolist()  # 정답은 세 번째 열
 
-    # 2) 학생 답안 로드
     stud_dir = DATA_DIR / exam / 'student_answer'
     student_answers = None
     for csv_file in stud_dir.glob('*.csv'):
@@ -101,47 +96,59 @@ def api_review():
             if sid == user_id:
                 student_answers = list(row)[2:2+len(ans_list)]
                 break
-        if student_answers: break
-    if student_answers is None:
+        if student_answers:
+            break
+
+    if not student_answers:
         return jsonify(error='응시 정보가 없습니다.'), 404
 
-    # 3) 채점 및 틀린 문제 수집
     wrong_list = []
     for i, stud in enumerate(student_answers):
         correct = ans_list[i].strip()
         s       = str(stud).strip()
         if not s.isdigit() or s != correct:
-            wrong_list.append({
-                'question': i+1,
-                'image':    f'/exp_images/{exam}/{i+1}.png'
-            })
+            wrong_list.append({'question': i+1})
     return jsonify(wrongList=wrong_list)
 
-# 개별 문제 조회 (이미지 + 선택지)
+# 개별 문제 조회
 @app.route('/api/review_question')
 def api_review_question():
     exam     = request.args.get('exam','').strip()
     question = int(request.args.get('question','0'))
-    image_url = f'/exp_images/{exam}/{question}.png'
-    choices = [1,2,3,4,5]
-    return jsonify(image_url=image_url, choices=choices)
+    return jsonify(
+        image_url=f'/problem_images/{exam}/{question}.png',
+        choices=[1,2,3,4,5]
+    )
 
-# 답안 제출 및 정답 확인
+# 정답 제출
 @app.route('/api/submit_review')
 def api_submit_review():
     exam     = request.args.get('exam','').strip()
-    question = int(request.args.get('question','0'))
+    question = int(request.args.get('question','').strip())
     answer   = request.args.get('answer','').strip()
 
-    # A.csv 정답 로드
     ans_path = DATA_DIR / exam / 'answer' / 'A.csv'
-    raw = pd.read_csv(ans_path, header=None, dtype=str)
-    correct = raw.iat[question, 2].strip()  # row=question, col=2
+    raw      = pd.read_csv(ans_path, header=None, dtype=str)
+    correct  = raw.iat[question, 2].strip()
+    return jsonify(correct=(answer == correct))
 
-    is_correct = (answer == correct)
-    return jsonify(correct=is_correct, explanation="")
+# ── 디버그: problem_images 폴더 파일 목록 ──
+@app.route('/api/debug/problem_images_files')
+def api_debug_problem_images_files():
+    exam = request.args.get('exam','').strip()
+    d    = DATA_DIR / exam / 'problem_images'
+    if not d.is_dir():
+        return jsonify(error='problem_images 폴더가 없습니다.'), 404
+    files = [p.name for p in d.iterdir() if p.is_file()]
+    return jsonify(files=sorted(files))
 
-# exp_images 서빙
+# 문제 이미지 서빙
+@app.route('/problem_images/<exam>/<path:filename>')
+def serve_problem_image(exam, filename):
+    img_dir = DATA_DIR / exam / 'problem_images'
+    return send_from_directory(str(img_dir), filename)
+
+# 해설 이미지 서빙
 @app.route('/exp_images/<exam>/<path:filename>')
 def serve_exp_images(exam, filename):
     img_dir = DATA_DIR / exam / 'exp_images'
