@@ -22,7 +22,7 @@
     .report-img { display:block; max-width:100%; margin:0 auto; }
     .hidden { display:none !important; }
 
-    /* ── 틀린 문제 다시 풀기 스타일 ── */
+    /* ── 틀린 문제 다시 풀어보기 스타일 ── */
     #questionImage { width:100%; height:auto; margin:1rem 0; border:1px solid #ccc; border-radius:4px; }
     #choiceButtons { text-align:center; }
     #choiceButtons button {
@@ -31,12 +31,13 @@
       border:1px solid #007bff; border-radius:4px;
       background:white; color:#007bff; cursor:pointer;
     }
-    #submitButton, #skipButton {
+    #submitButton, #toQuizButton, #skipButton {
       display:block; width:100%; margin:1rem 0; padding:.75rem; font-size:1rem;
       border:none; border-radius:4px; cursor:pointer;
     }
-    #submitButton { background:#007bff; }
-    #skipButton   { background:#6c757d; }
+    #submitButton   { background:#007bff; }
+    #toQuizButton   { background:#17a2b8; }
+    #skipButton     { background:#6c757d; }
     #feedback { text-align:center; font-size:1.1rem; margin-top:1rem; }
     #retryButton, #explainButton, #nextButton {
       display:block; width:100%; padding:.75rem; margin:.5rem 0; font-size:1rem;
@@ -96,7 +97,7 @@
     <div id="menuSection" class="hidden">
       <h1>GAIA 모의고사 복습 사이트</h1>
       <button id="menuReport" class="menu-button">1. 내 성적표 확인</button>
-      <button id="menuReview" class="menu-button">2. 틀린 문제 다시 풀기</button>
+      <button id="menuReview" class="menu-button">2. 틀린 문제 다시 풀어보기</button>
       <button id="menuQuiz" class="menu-button">3. 틀린 문제 O/X 퀴즈</button>
       <p id="menuMsg" class="error"></p>
     </div>
@@ -108,13 +109,14 @@
       <p id="reportMsg" class="error"></p>
     </div>
 
-    <!-- ⑤ 틀린 문제 다시 풀기 -->
+    <!-- ⑤ 틀린 문제 다시 풀어보기 -->
     <div id="reviewSection" class="hidden">
-      <h1>틀린 문제 다시 풀기</h1>
+      <h1>틀린 문제 다시 풀어보기</h1>
       <div id="reviewQuestionSection">
         <img id="questionImage" class="hidden" alt="문제 이미지">
         <div id="choiceButtons"></div>
         <button id="submitButton" class="hidden">제출하기</button>
+        <button id="toQuizButton" class="hidden">O/X 퀴즈 풀러가기</button>
         <button id="skipButton"   class="hidden">SKIP</button>
         <p id="reviewMsg" class="error"></p>
       </div>
@@ -141,9 +143,9 @@
       <div id="quizFeedbackSection" class="hidden">
         <p id="quizFeedback"></p>
         <div id="quizOptions">
-          <button id="quizNextSentenceButton">다음 선지로 넘어가기</button>
-          <button id="quizNextQuestionButton">문제 건너뛰기</button>
-          <button id="quizReviewOriginalButton">원본 문제 풀러 가기</button>
+          <button id="quizNextSentenceButton" class="hidden">다음 선지로 넘어가기</button>
+          <button id="quizNextQuestionButton" class="hidden">문제 건너뛰기</button>
+          <button id="quizReviewOriginalButton" class="hidden">원본 문제 풀러 가기</button>
         </div>
       </div>
     </div>
@@ -167,7 +169,7 @@
         });
     }
     function resetReviewUI() {
-      ['submitButton','skipButton','retryButton','explainButton','nextButton','questionImage','explanationImage']
+      ['submitButton','toQuizButton','skipButton','retryButton','explainButton','nextButton','questionImage','explanationImage']
         .forEach(id => {
           const el = document.getElementById(id);
           if (el) el.classList.add('hidden');
@@ -186,11 +188,12 @@
         return;
       }
       fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
-        .then(r => r.json()).then(d => {
+        .then(res => res.json())
+        .then(d => {
           if (d.authenticated) {
             currentId = id; hideAll();
             document.getElementById('examSection').classList.remove('hidden');
-            fetch('/api/exams').then(r=>r.json()).then(exs=>{
+            fetch('/api/exams').then(r => r.json()).then(exs => {
               const sel = document.getElementById('examSelect'); sel.innerHTML = '';
               exs.forEach(e => sel.add(new Option(e,e)));
             });
@@ -221,7 +224,8 @@
       hideAll(); clearMsgs(); resetReviewUI();
       document.getElementById('reportSection').classList.remove('hidden');
       fetch(`/api/reportcard?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}`)
-        .then(r=>r.json()).then(d => {
+        .then(r=>r.json())
+        .then(d => {
           if (d.url) document.getElementById('reportImage').src = d.url;
           else       document.getElementById('reportMsg').textContent = d.error;
         })
@@ -230,12 +234,13 @@
         });
     };
 
-    // 4) 틀린 문제 다시 풀기
+    // 4) 틀린 문제 다시 풀어보기
     document.getElementById('menuReview').onclick = () => {
       hideAll(); clearMsgs(); resetReviewUI();
       document.getElementById('reviewSection').classList.remove('hidden');
       fetch(`/api/review?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}`)
-        .then(r=>r.json()).then(d => {
+        .then(r=>r.json())
+        .then(d => {
           wrongList = d.wrongList.map(x => x.question);
           currentWrongIndex = 0;
           loadQuestion(wrongList[0]);
@@ -247,9 +252,11 @@
 
     function loadQuestion(qno) {
       clearMsgs(); resetReviewUI();
+      // 문제 이미지
       const qi = document.getElementById('questionImage');
       qi.src = `/problem_images/${encodeURIComponent(currentExam)}/${qno}.png`;
       qi.classList.remove('hidden');
+      // 선택지
       const cb = document.getElementById('choiceButtons');
       ['①','②','③','④','⑤'].forEach((label, idx) => {
         const btn = document.createElement('button');
@@ -261,8 +268,16 @@
         };
         cb.appendChild(btn);
       });
+      // 제출, OX 퀴즈, SKIP 버튼
       document.getElementById('submitButton').classList.remove('hidden');
       document.getElementById('submitButton').onclick = () => submitAnswer(qno);
+      document.getElementById('toQuizButton').classList.remove('hidden');
+      document.getElementById('toQuizButton').onclick = () => {
+        hideAll(); clearMsgs(); resetReviewUI();
+        document.getElementById('quizSection').classList.remove('hidden');
+        currentSentenceIndex = 0;
+        loadQuizSentences(qno);
+      };
       document.getElementById('skipButton').classList.remove('hidden');
       document.getElementById('skipButton').onclick = () => nextQuestion();
     }
@@ -274,7 +289,8 @@
       }
       clearMsgs();
       fetch(`/api/submit_review?exam=${encodeURIComponent(currentExam)}&question=${qno}&answer=${selectedAnswer}`)
-        .then(r=>r.json()).then(d => {
+        .then(r=>r.json())
+        .then(d => {
           document.getElementById('reviewQuestionSection').classList.add('hidden');
           const fb = document.getElementById('feedback');
           fb.textContent = d.correct ? '정답입니다!' : '오답입니다.';
@@ -316,7 +332,8 @@
       hideAll(); clearMsgs(); resetReviewUI();
       document.getElementById('quizSection').classList.remove('hidden');
       fetch(`/api/review?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}`)
-        .then(r=>r.json()).then(d => {
+        .then(r=>r.json())
+        .then(d => {
           wrongList = d.wrongList.map(x => x.question);
           currentWrongIndex = 0;
           currentSentenceIndex = 0;
@@ -365,7 +382,6 @@
       document.getElementById('quizSentenceSection').classList.add('hidden');
       document.getElementById('quizFeedbackSection').classList.remove('hidden');
 
-      // 항상 보이도록 변경
       document.getElementById('quizNextSentenceButton').classList.remove('hidden');
       document.getElementById('quizNextSentenceButton').onclick = () => {
         if (currentSentenceIndex < quizSentences.length - 1) {
