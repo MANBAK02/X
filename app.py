@@ -20,7 +20,6 @@ valid_ids = set()
 if STUDENT_LIST_CSV.exists():
     with open(STUDENT_LIST_CSV, encoding='utf-8') as f:
         reader = csv.reader(f)
-        next(reader, None)
         for row in reader:
             if row:
                 valid_ids.add(row[0].strip())
@@ -58,8 +57,10 @@ def api_check_exam():
     exam    = request.args.get('exam','').strip()
     if exam not in exam_ids:
         return jsonify(registered=False, error='존재하지 않는 회차입니다.')
-    return jsonify(registered=(user_id in exam_ids[exam]),
-                   error=None if user_id in exam_ids[exam] else '응시 정보가 없습니다.')
+    return jsonify(
+        registered=(user_id in exam_ids[exam]),
+        error=None if user_id in exam_ids[exam] else '응시 정보가 없습니다.'
+    )
 
 @app.route('/api/reportcard')
 def api_reportcard():
@@ -82,7 +83,7 @@ def api_review():
     if not ans_path.exists():
         return jsonify(error='정답 파일이 없습니다.'), 404
     raw      = pd.read_csv(ans_path, header=None, dtype=str)
-    ans_list = raw.iloc[1:, 2].tolist()
+    ans_list = raw.iloc[1:, 2].astype(str).tolist()
 
     stud_dir = DATA_DIR / exam / 'student_answer'
     student_answers = None
@@ -135,10 +136,16 @@ def api_quiz_sentences():
         return jsonify(error='OX.csv 파일이 없습니다.'), 404
 
     sentences = []
+    current_q = None
     with open(csv_path, encoding='utf-8') as f:
         reader = csv.reader(f)
         for row in reader:
-            if len(row) >= 3 and str(row[0]).strip() == question:
+            if not row or len(row) < 3:
+                continue
+            first = str(row[0]).strip()
+            if first:
+                current_q = first
+            if current_q == question:
                 sentences.append({
                     'text':    row[1].strip(),
                     'correct': row[2].strip().upper() == 'O'
@@ -146,18 +153,7 @@ def api_quiz_sentences():
 
     if not sentences:
         return jsonify(error='해당 문장의 정의가 없습니다.'), 404
-
     return jsonify(sentences=sentences)
-
-# ── 디버그: OX 폴더 파일 목록 ──
-@app.route('/api/debug/ox_files')
-def api_debug_ox_files():
-    exam = request.args.get('exam','').strip()
-    d    = DATA_DIR / exam / 'OX'
-    if not d.exists():
-        return jsonify(error='OX 폴더가 없습니다.'), 404
-    files = [p.name for p in d.iterdir() if p.is_file()]
-    return jsonify(files=sorted(files))
 
 # ── 이미지 서빙 ──
 @app.route('/problem_images/<exam>/<path:filename>')
@@ -175,7 +171,6 @@ def serve_report(exam, subpath):
     report_dir = DATA_DIR / exam / 'report card'
     return send_from_directory(str(report_dir), subpath)
 
-# ── SPA 정적 파일 서빙 ──
 @app.route('/', defaults={'path':''})
 @app.route('/<path:path>')
 def serve_frontend(path):
@@ -188,20 +183,3 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0',
             port=int(os.environ.get('PORT', 5000)),
             debug=True)
-
-# ── 디버그: data 폴더 바로 밑에 어떤 디렉터리(모의고사 회차)들이 있는지 반환 ──
-@app.route('/api/debug/exam_folders')
-def api_debug_exam_folders():
-    # DATA_DIR 밑에 있는 모든 폴더 이름을 리스트로
-    folders = [p.name for p in DATA_DIR.iterdir() if p.is_dir()]
-    return jsonify(folders=sorted(folders))
-
-# ── 디버그: 특정 exam 폴더 안의 내용(파일 및 서브폴더) 리스트 반환 ──
-@app.route('/api/debug/exam_contents')
-def api_debug_exam_contents():
-    exam = request.args.get('exam','').strip()
-    d    = DATA_DIR / exam
-    if not d.exists():
-        return jsonify(error=f"'{exam}' 폴더가 없습니다."), 404
-    entries = [p.name for p in d.iterdir()]
-    return jsonify(contents=sorted(entries))

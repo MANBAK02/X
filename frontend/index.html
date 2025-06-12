@@ -141,9 +141,9 @@
       <div id="quizFeedbackSection" class="hidden">
         <p id="quizFeedback"></p>
         <div id="quizOptions">
-          <button id="quizNextSentenceButton" class="hidden">다음 선지로 넘어가기</button>
-          <button id="quizNextQuestionButton" class="hidden">문제 건너뛰기</button>
-          <button id="quizReviewOriginalButton" class="hidden">원본 문제 풀러 가기</button>
+          <button id="quizNextSentenceButton">다음 선지로 넘어가기</button>
+          <button id="quizNextQuestionButton">문제 건너뛰기</button>
+          <button id="quizReviewOriginalButton">원본 문제 풀러 가기</button>
         </div>
       </div>
     </div>
@@ -261,10 +261,10 @@
         };
         cb.appendChild(btn);
       });
-      const sb = document.getElementById('submitButton');
-      sb.classList.remove('hidden'); sb.onclick = () => submitAnswer(qno);
-      const skip = document.getElementById('skipButton');
-      skip.classList.remove('hidden'); skip.onclick = () => nextQuestion();
+      document.getElementById('submitButton').classList.remove('hidden');
+      document.getElementById('submitButton').onclick = () => submitAnswer(qno);
+      document.getElementById('skipButton').classList.remove('hidden');
+      document.getElementById('skipButton').onclick = () => nextQuestion();
     }
 
     function submitAnswer(qno) {
@@ -280,22 +280,20 @@
           fb.textContent = d.correct ? '정답입니다!' : '오답입니다.';
           fb.style.color = d.correct ? '#007bff' : '#dc3545';
           document.getElementById('reviewFeedbackSection').classList.remove('hidden');
-          const retry = document.getElementById('retryButton');
-          retry.classList.remove('hidden');
-          retry.onclick = () => {
+          document.getElementById('retryButton').classList.remove('hidden');
+          document.getElementById('retryButton').onclick = () => {
             document.getElementById('reviewFeedbackSection').classList.add('hidden');
             document.getElementById('reviewQuestionSection').classList.remove('hidden');
             loadQuestion(qno);
           };
-          const expb = document.getElementById('explainButton');
-          expb.classList.remove('hidden');
-          expb.onclick = () => {
+          document.getElementById('explainButton').classList.remove('hidden');
+          document.getElementById('explainButton').onclick = () => {
             const ei = document.getElementById('explanationImage');
             ei.src = `/exp_images/${encodeURIComponent(currentExam)}/${qno}.png`;
             ei.classList.remove('hidden');
           };
-          const next = document.getElementById('nextButton');
-          next.classList.remove('hidden'); next.onclick = () => nextQuestion();
+          document.getElementById('nextButton').classList.remove('hidden');
+          document.getElementById('nextButton').onclick = () => nextQuestion();
         })
         .catch(() => {
           document.getElementById('feedback').textContent = '오류';
@@ -306,8 +304,11 @@
       currentWrongIndex++;
       document.getElementById('reviewFeedbackSection').classList.add('hidden');
       document.getElementById('reviewQuestionSection').classList.remove('hidden');
-      if (currentWrongIndex < wrongList.length) loadQuestion(wrongList[currentWrongIndex]);
-      else location.reload();
+      if (currentWrongIndex < wrongList.length) {
+        loadQuestion(wrongList[currentWrongIndex]);
+      } else {
+        location.reload();
+      }
     }
 
     // 5) 틀린 문제 O/X 퀴즈
@@ -317,7 +318,8 @@
       fetch(`/api/review?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}`)
         .then(r=>r.json()).then(d => {
           wrongList = d.wrongList.map(x => x.question);
-          currentWrongIndex = 0; currentSentenceIndex = 0;
+          currentWrongIndex = 0;
+          currentSentenceIndex = 0;
           loadQuizSentences(wrongList[0]);
         })
         .catch(() => alert('OX 퀴즈 로드 오류'));
@@ -363,20 +365,17 @@
       document.getElementById('quizSentenceSection').classList.add('hidden');
       document.getElementById('quizFeedbackSection').classList.remove('hidden');
 
-      const nextSent = document.getElementById('quizNextSentenceButton');
-      if (currentSentenceIndex < quizSentences.length - 1) {
-        nextSent.classList.remove('hidden');
-        nextSent.onclick = () => {
+      // 항상 보이도록 변경
+      document.getElementById('quizNextSentenceButton').classList.remove('hidden');
+      document.getElementById('quizNextSentenceButton').onclick = () => {
+        if (currentSentenceIndex < quizSentences.length - 1) {
           currentSentenceIndex++;
           showQuizSentence();
-        };
-      } else {
-        nextSent.classList.add('hidden');
-      }
+        }
+      };
 
-      const nextQ = document.getElementById('quizNextQuestionButton');
-      nextQ.classList.remove('hidden');
-      nextQ.onclick = () => {
+      document.getElementById('quizNextQuestionButton').classList.remove('hidden');
+      document.getElementById('quizNextQuestionButton').onclick = () => {
         currentWrongIndex++;
         if (currentWrongIndex < wrongList.length) {
           loadQuizSentences(wrongList[currentWrongIndex]);
@@ -385,9 +384,8 @@
         }
       };
 
-      const rev = document.getElementById('quizReviewOriginalButton');
-      rev.classList.remove('hidden');
-      rev.onclick = () => {
+      document.getElementById('quizReviewOriginalButton').classList.remove('hidden');
+      document.getElementById('quizReviewOriginalButton').onclick = () => {
         hideAll(); clearMsgs(); resetReviewUI();
         document.getElementById('reviewSection').classList.remove('hidden');
         loadQuestion(wrongList[currentWrongIndex]);
