@@ -105,6 +105,7 @@
         <p id="feedback"></p>
         <img id="explanationImage" class="hidden" alt="해설 이미지">
         <button id="retryButton"   class="hidden">다시 풀어보기</button>
+        <button id="explainButton" class="hidden">해설 확인하기</button>
         <button id="nextButton"    class="hidden">다음 문제</button>
       </div>
     </div>
@@ -119,14 +120,13 @@
         .forEach(id => document.getElementById(id).classList.add('hidden'));
     }
     function clearMsgs() {
-      ['loginMsg','examMsg','menuMsg','reportMsg','reviewMsg','feedback']
+      ['loginMsg','examMsg','menuMsg','reviewMsg','feedback']
         .forEach(id => {
           const el = document.getElementById(id);
           if (el) el.textContent = '';
         });
     }
     function resetReviewUI() {
-      // 버튼/이미지 등 모든 리뷰 UI 초기화 (null 체크 포함)
       ['submitButton','skipButton','retryButton','explainButton','nextButton','questionImage','explanationImage']
         .forEach(id => {
           const el = document.getElementById(id);
@@ -152,7 +152,6 @@
             currentId = id;
             hideAll();
             document.getElementById('examSection').classList.remove('hidden');
-            // 회차 목록 로드
             fetch('/api/exams').then(r=>r.json()).then(exs=>{
               const sel = document.getElementById('examSelect');
               sel.innerHTML = '';
@@ -218,11 +217,9 @@
     function loadQuestion(qno) {
       clearMsgs();
       resetReviewUI();
-      // 문제 이미지 보이기
       const qi = document.getElementById('questionImage');
       qi.src = `/problem_images/${encodeURIComponent(currentExam)}/${qno}.png`;
       qi.classList.remove('hidden');
-      // 선택지 렌더링
       const cb = document.getElementById('choiceButtons');
       [1,2,3,4,5].forEach(ch => {
         const btn = document.createElement('button');
@@ -234,7 +231,6 @@
         };
         cb.appendChild(btn);
       });
-      // 제출/스킵 버튼 보이기
       const sb = document.getElementById('submitButton');
       sb.classList.remove('hidden');
       sb.onclick = () => submitAnswer(qno);
@@ -251,32 +247,36 @@
       clearMsgs();
       fetch(`/api/submit_review?exam=${encodeURIComponent(currentExam)}&question=${qno}&answer=${selectedAnswer}`)
         .then(r => r.json()).then(d => {
-          // 질문 화면 숨기기, 피드백 화면 보이기
           document.getElementById('reviewQuestionSection').classList.add('hidden');
           const fb = document.getElementById('feedback');
           fb.textContent = d.correct ? '정답입니다!' : '오답입니다.';
           fb.style.color = d.correct ? '#007bff' : '#dc3545';
           document.getElementById('reviewFeedbackSection').classList.remove('hidden');
-          // 다시 풀기 버튼
           const retry = document.getElementById('retryButton');
-          retry.classList.remove('hidden');
-          retry.onclick = () => {
-            document.getElementById('reviewFeedbackSection').classList.add('hidden');
-            document.getElementById('reviewQuestionSection').classList.remove('hidden');
-            loadQuestion(qno);
-          };
-          // 해설 이미지 버튼
+          if (retry) {
+            retry.classList.remove('hidden');
+            retry.onclick = () => {
+              document.getElementById('reviewFeedbackSection').classList.add('hidden');
+              document.getElementById('reviewQuestionSection').classList.remove('hidden');
+              loadQuestion(qno);
+            };
+          }
           const expb = document.getElementById('explainButton');
-          expb.classList.remove('hidden');
-          expb.onclick = () => {
-            const ei = document.getElementById('explanationImage');
-            ei.src = `/exp_images/${encodeURIComponent(currentExam)}/${qno}.png`;
-            ei.classList.remove('hidden');
-          };
-          // 다음 문제 버튼
+          if (expb) {
+            expb.classList.remove('hidden');
+            expb.onclick = () => {
+              const ei = document.getElementById('explanationImage');
+              if (ei) {
+                ei.src = `/exp_images/${encodeURIComponent(currentExam)}/${qno}.png`;
+                ei.classList.remove('hidden');
+              }
+            };
+          }
           const next = document.getElementById('nextButton');
-          next.classList.remove('hidden');
-          next.onclick = () => nextQuestion();
+          if (next) {
+            next.classList.remove('hidden');
+            next.onclick = () => nextQuestion();
+          }
         })
         .catch(() => {
           document.getElementById('feedback').textContent = '오류';
@@ -308,3 +308,4 @@
   </script>
 </body>
 </html>
+
