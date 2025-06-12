@@ -196,3 +196,12 @@ def api_debug_exam_folders():
     folders = [p.name for p in DATA_DIR.iterdir() if p.is_dir()]
     return jsonify(folders=sorted(folders))
 
+# ── 디버그: 특정 exam 폴더 안의 내용(파일 및 서브폴더) 리스트 반환 ──
+@app.route('/api/debug/exam_contents')
+def api_debug_exam_contents():
+    exam = request.args.get('exam','').strip()
+    d    = DATA_DIR / exam
+    if not d.exists():
+        return jsonify(error=f"'{exam}' 폴더가 없습니다."), 404
+    entries = [p.name for p in d.iterdir()]
+    return jsonify(contents=sorted(entries))
