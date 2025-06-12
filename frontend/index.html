@@ -217,20 +217,24 @@
     function loadQuestion(qno) {
       clearMsgs();
       resetReviewUI();
+      // 문제 이미지 표시
       const qi = document.getElementById('questionImage');
       qi.src = `/problem_images/${encodeURIComponent(currentExam)}/${qno}.png`;
       qi.classList.remove('hidden');
+      // 선택지 (①②③④⑤)
       const cb = document.getElementById('choiceButtons');
-      [1,2,3,4,5].forEach(ch => {
+      const symbols = ['①','②','③','④','⑤'];
+      symbols.forEach((label, idx) => {
         const btn = document.createElement('button');
-        btn.textContent = ch;
+        btn.textContent = label;
         btn.onclick = () => {
-          selectedAnswer = ch;
+          selectedAnswer = idx + 1;
           cb.querySelectorAll('button').forEach(b => b.style.background = 'white');
           btn.style.background = '#d0e6ff';
         };
         cb.appendChild(btn);
       });
+      // 제출/스킵 버튼
       const sb = document.getElementById('submitButton');
       sb.classList.remove('hidden');
       sb.onclick = () => submitAnswer(qno);
@@ -308,4 +312,3 @@
   </script>
 </body>
 </html>
-
