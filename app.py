@@ -189,3 +189,10 @@ if __name__ == '__main__':
             port=int(os.environ.get('PORT', 5000)),
             debug=True)
 
+# ── 디버그: data 폴더 바로 밑에 어떤 디렉터리(모의고사 회차)들이 있는지 반환 ──
+@app.route('/api/debug/exam_folders')
+def api_debug_exam_folders():
+    # DATA_DIR 밑에 있는 모든 폴더 이름을 리스트로
+    folders = [p.name for p in DATA_DIR.iterdir() if p.is_dir()]
+    return jsonify(folders=sorted(folders))
+
