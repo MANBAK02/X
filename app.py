@@ -132,18 +132,21 @@ def api_quiz_sentences():
     exam     = request.args.get('exam','').strip()
     question = request.args.get('question','').strip()
 
-    csv_path = DATA_DIR / exam / 'quiz_sentences.csv'
+    # 이제 data/<exam>/OX/OX.csv 에서 읽어 옵니다
+    csv_path = DATA_DIR / exam / 'OX' / 'OX.csv'
     if not csv_path.exists():
-        return jsonify(error='quiz_sentences.csv 파일이 없습니다.'), 404
+        return jsonify(error='OX.csv 파일이 없습니다.'), 404
 
     sentences = []
     with open(csv_path, encoding='utf-8') as f:
-        reader = csv.DictReader(f)
+        reader = csv.reader(f)
         for row in reader:
-            if str(row['question']).strip() == question:
+            if not row or len(row) < 3:
+                continue
+            if str(row[0]).strip() == question:
                 sentences.append({
-                    'text': row['sentence'].strip(),
-                    'correct': row['correct'].strip().upper() == 'O'
+                    'text':    row[1].strip(),
+                    'correct': row[2].strip().upper() == 'O'
                 })
 
     if not sentences:
