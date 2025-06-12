@@ -22,13 +22,12 @@
     .report-img { display:block; max-width:100%; margin:0 auto; }
     .hidden { display:none !important; }
 
-    /* ── 리뷰 전용 스타일 ── */
+    /* ── 틀린 문제 다시 풀기 스타일 ── */
     #questionImage { width:100%; height:auto; margin:1rem 0; border:1px solid #ccc; border-radius:4px; }
     #choiceButtons { text-align:center; }
-    /* 선택지 기호 크기 키우기 */
     #choiceButtons button {
       display:inline-block; width:18%; margin:1%; padding:.75rem 0;
-      font-size:1.5rem; /* 확대된 크기 */
+      font-size:1.5rem; /* 선택지 기호 크기 키움 */
       border:1px solid #007bff; border-radius:4px;
       background:white; color:#007bff; cursor:pointer;
     }
@@ -48,12 +47,14 @@
     #nextButton    { background:#28a745; }
     #explanationImage { width:100%; height:auto; margin:1rem 0; border:1px solid #ccc; border-radius:4px; }
 
-    /* ── OX 퀴즈 전용 스타일 ── */
+    /* ── OX 퀴즈 스타일 ── */
+    #originalQuestion { text-align:center; color:red; font-size:1rem; margin-top:1rem; }
+    #quizSentenceSection, #quizFeedbackSection { padding:1rem 0; }
     #quizSentence { font-size:1rem; margin:1rem 0; }
     #oxButtons { text-align:center; }
     #oxButtons button {
       display:inline-block; width:40%; margin:1%; padding:.75rem 0;
-      font-size:1.5rem; /* O/X 크게 */
+      font-size:1.5rem; /* O/X 기호 크기 키움 */
       border:1px solid #007bff; border-radius:4px;
       background:white; color:#007bff; cursor:pointer;
     }
@@ -63,13 +64,12 @@
       border:none; border-radius:4px; cursor:pointer;
     }
     #quizNextSentenceButton { background:#ffc107; color:white; }
-    #quizNextQuestionButton { background:#28a745; color:white; }
+    #quizNextQuestionButton { background:#6c757d; color:white; }
     #quizReviewOriginalButton { background:#17a2b8; color:white; }
   </style>
 </head>
 <body>
   <div class="container">
-
     <!-- 홈 버튼 -->
     <div id="homeButton" class="home-button hidden">
       <img src="icons/home.png" alt="Home"><span>처음으로</span>
@@ -131,6 +131,7 @@
     <div id="quizSection" class="hidden">
       <h1>틀린 문제 O/X 퀴즈</h1>
       <div id="quizSentenceSection" class="hidden">
+        <p id="originalQuestion"></p>
         <p id="quizSentence"></p>
         <div id="oxButtons">
           <button id="oxTrueBtn">O</button>
@@ -140,213 +141,227 @@
       <div id="quizFeedbackSection" class="hidden">
         <p id="quizFeedback"></p>
         <div id="quizOptions">
-          <button id="quizNextSentenceButton">다음 선지</button>
-          <button id="quizNextQuestionButton">다음 문제</button>
-          <button id="quizReviewOriginalButton">원본 문제 풀러 가기</button>
+          <button id="quizNextSentenceButton" class="hidden">다음 선지</button>
+          <button id="quizNextQuestionButton" class="hidden">문제 건너뛰기</button>
+          <button id="quizReviewOriginalButton" class="hidden">원본 문제 풀러 가기</button>
         </div>
       </div>
     </div>
-
   </div>
 
   <script>
-    let currentId='', currentExam='';
-    let wrongList=[], currentWrongIndex=0, currentSentenceIndex=0, quizSentences=[];
+    let currentId = '', currentExam = '';
+    let wrongList = [], currentWrongIndex = 0;
+    let quizSentences = [], currentSentenceIndex = 0;
+    let selectedAnswer = null;
 
     function hideAll() {
       ['loginSection','examSection','menuSection','reportSection','reviewSection','quizSection']
-        .forEach(id=>document.getElementById(id).classList.add('hidden'));
+        .forEach(id => document.getElementById(id).classList.add('hidden'));
     }
     function clearMsgs() {
       ['loginMsg','examMsg','menuMsg','reviewMsg','feedback','quizFeedback']
-        .forEach(id=>{
-          const el=document.getElementById(id);
-          if(el) el.textContent='';
+        .forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = '';
         });
     }
     function resetReviewUI() {
       ['submitButton','skipButton','retryButton','explainButton','nextButton','questionImage','explanationImage']
-      .forEach(id=>{
-        const el=document.getElementById(id);
-        if(el) el.classList.add('hidden');
-      });
-      const cb=document.getElementById('choiceButtons');
-      if(cb) cb.innerHTML='';
-      selectedAnswer=null;
+        .forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.classList.add('hidden');
+        });
+      const cb = document.getElementById('choiceButtons');
+      if (cb) cb.innerHTML = '';
+      selectedAnswer = null;
     }
 
-    // 로그인
-    document.getElementById('loginBtn').onclick=()=>{
+    // 1) 로그인
+    document.getElementById('loginBtn').onclick = () => {
       clearMsgs(); resetReviewUI();
-      const id=document.getElementById('loginId').value.trim();
-      if(!id){ document.getElementById('loginMsg').textContent='ID를 입력하세요'; return; }
+      const id = document.getElementById('loginId').value.trim();
+      if (!id) {
+        document.getElementById('loginMsg').textContent = 'ID를 입력하세요';
+        return;
+      }
       fetch(`/api/authenticate?id=${encodeURIComponent(id)}`)
-        .then(r=>r.json()).then(d=>{
-          if(d.authenticated){
-            currentId=id; hideAll();
+        .then(r => r.json()).then(d => {
+          if (d.authenticated) {
+            currentId = id; hideAll();
             document.getElementById('examSection').classList.remove('hidden');
             fetch('/api/exams').then(r=>r.json()).then(exs=>{
-              const sel=document.getElementById('examSelect');
-              sel.innerHTML=''; exs.forEach(e=>sel.add(new Option(e,e)));
+              const sel = document.getElementById('examSelect'); sel.innerHTML = '';
+              exs.forEach(e => sel.add(new Option(e,e)));
             });
           } else {
-            document.getElementById('loginMsg').textContent='인증되지 않은 ID입니다';
+            document.getElementById('loginMsg').textContent = '인증되지 않은 ID입니다';
           }
-        }).catch(()=>document.getElementById('loginMsg').textContent='인증 오류');
+        })
+        .catch(() => {
+          document.getElementById('loginMsg').textContent = '인증 오류';
+        });
     };
 
-    // 회차 선택
-    document.getElementById('examBtn').onclick=()=>{
+    // 2) 회차 선택
+    document.getElementById('examBtn').onclick = () => {
       clearMsgs(); resetReviewUI();
-      const ex=document.getElementById('examSelect').value;
-      if(!ex){ document.getElementById('examMsg').textContent='회차 선택'; return; }
-      currentExam=ex; hideAll();
+      const ex = document.getElementById('examSelect').value;
+      if (!ex) {
+        document.getElementById('examMsg').textContent = '회차 선택'; return;
+      }
+      currentExam = ex; hideAll();
       document.getElementById('menuSection').classList.remove('hidden');
       document.getElementById('homeButton').classList.remove('hidden');
     };
 
-    // 내 성적표
-    document.getElementById('menuReport').onclick=()=>{
+    // 3) 내 성적표
+    document.getElementById('menuReport').onclick = () => {
       hideAll(); clearMsgs(); resetReviewUI();
       document.getElementById('reportSection').classList.remove('hidden');
       fetch(`/api/reportcard?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}`)
-        .then(r=>r.json()).then(d=>{
-          if(d.url) document.getElementById('reportImage').src=d.url;
-          else       document.getElementById('reportMsg').textContent=d.error;
-        }).catch(()=>document.getElementById('reportMsg').textContent='로드 오류');
+        .then(r=>r.json()).then(d => {
+          if (d.url) document.getElementById('reportImage').src = d.url;
+          else       document.getElementById('reportMsg').textContent = d.error;
+        })
+        .catch(() => {
+          document.getElementById('reportMsg').textContent = '로드 오류';
+        });
     };
 
-    // 틀린 문제 다시 풀기
-    document.getElementById('menuReview').onclick=()=>{
+    // 4) 틀린 문제 다시 풀기
+    document.getElementById('menuReview').onclick = () => {
       hideAll(); clearMsgs(); resetReviewUI();
       document.getElementById('reviewSection').classList.remove('hidden');
       fetch(`/api/review?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}`)
-        .then(r=>r.json()).then(d=>{
-          wrongList=d.wrongList.map(x=>x.question);
-          currentWrongIndex=0;
+        .then(r=>r.json()).then(d => {
+          wrongList = d.wrongList.map(x => x.question);
+          currentWrongIndex = 0;
           loadQuestion(wrongList[0]);
-        }).catch(()=>document.getElementById('reviewMsg').textContent='불러오기 오류');
+        })
+        .catch(() => {
+          document.getElementById('reviewMsg').textContent = '불러오기 오류';
+        });
     };
 
-    function loadQuestion(qno){
+    function loadQuestion(qno) {
       clearMsgs(); resetReviewUI();
-      const qi=document.getElementById('questionImage');
-      qi.src=`/problem_images/${encodeURIComponent(currentExam)}/${qno}.png`;
+      const qi = document.getElementById('questionImage');
+      qi.src = `/problem_images/${encodeURIComponent(currentExam)}/${qno}.png`;
       qi.classList.remove('hidden');
-      const cb=document.getElementById('choiceButtons');
-      ['①','②','③','④','⑤'].forEach((label,idx)=>{
-        const btn=document.createElement('button');
-        btn.textContent=label;
-        btn.onclick=()=>{
-          selectedAnswer=idx+1;
-          cb.querySelectorAll('button').forEach(b=>b.style.background='white');
-          btn.style.background='#d0e6ff';
+      const cb = document.getElementById('choiceButtons');
+      ['①','②','③','④','⑤'].forEach((label, idx) => {
+        const btn = document.createElement('button');
+        btn.textContent = label;
+        btn.onclick = () => {
+          selectedAnswer = idx + 1;
+          cb.querySelectorAll('button').forEach(b => b.style.background = 'white');
+          btn.style.background = '#d0e6ff';
         };
         cb.appendChild(btn);
       });
-      const sb=document.getElementById('submitButton');
-      sb.classList.remove('hidden');
-      sb.onclick=()=>submitAnswer(qno);
-      const skip=document.getElementById('skipButton');
-      skip.classList.remove('hidden');
-      skip.onclick=()=>nextQuestion();
+      const sb = document.getElementById('submitButton');
+      sb.classList.remove('hidden'); sb.onclick = () => submitAnswer(qno);
+      const skip = document.getElementById('skipButton');
+      skip.classList.remove('hidden'); skip.onclick = () => nextQuestion();
     }
-    function submitAnswer(qno){
-      if(typeof selectedAnswer!=='number'){
-        document.getElementById('reviewMsg').textContent='선지를 선택하세요'; return;
+
+    function submitAnswer(qno) {
+      if (typeof selectedAnswer !== 'number') {
+        document.getElementById('reviewMsg').textContent = '선지를 선택하세요'; return;
       }
       clearMsgs();
       fetch(`/api/submit_review?exam=${encodeURIComponent(currentExam)}&question=${qno}&answer=${selectedAnswer}`)
-        .then(r=>r.json()).then(d=>{
+        .then(r=>r.json()).then(d => {
           document.getElementById('reviewQuestionSection').classList.add('hidden');
-          const fb=document.getElementById('feedback');
-          fb.textContent=d.correct?'정답입니다!':'오답입니다.';
-          fb.style.color=d.correct?'#007bff':'#dc3545';
+          const fb = document.getElementById('feedback');
+          fb.textContent = d.correct ? '정답입니다!' : '오답입니다.';
+          fb.style.color = d.correct ? '#007bff' : '#dc3545';
           document.getElementById('reviewFeedbackSection').classList.remove('hidden');
-          const retry=document.getElementById('retryButton');
+          const retry = document.getElementById('retryButton');
           retry.classList.remove('hidden');
-          retry.onclick=()=>{ document.getElementById('reviewFeedbackSection').classList.add('hidden'); document.getElementById('reviewQuestionSection').classList.remove('hidden'); loadQuestion(qno); };
-          const expb=document.getElementById('explainButton');
+          retry.onclick = () => { document.getElementById('reviewFeedbackSection').classList.add('hidden'); document.getElementById('reviewQuestionSection').classList.remove('hidden'); loadQuestion(qno); };
+          const expb = document.getElementById('explainButton');
           expb.classList.remove('hidden');
-          expb.onclick=()=>{
-            const ei=document.getElementById('explanationImage');
-            ei.src=`/exp_images/${encodeURIComponent(currentExam)}/${qno}.png`;
-            ei.classList.remove('hidden');
-          };
-          const next=document.getElementById('nextButton');
-          next.classList.remove('hidden');
-          next.onclick=()=>nextQuestion();
-        }).catch(()=>document.getElementById('feedback').textContent='오류');
+          expb.onclick = () => { const ei = document.getElementById('explanationImage'); ei.src = `/exp_images/${encodeURIComponent(currentExam)}/${qno}.png`; ei.classList.remove('hidden'); };
+          const next = document.getElementById('nextButton');
+          next.classList.remove('hidden'); next.onclick = () => nextQuestion();
+        })
+        .catch(() => { document.getElementById('feedback').textContent = '오류'; });
     }
-    function nextQuestion(){
+
+    function nextQuestion() {
       currentWrongIndex++;
       document.getElementById('reviewFeedbackSection').classList.add('hidden');
       document.getElementById('reviewQuestionSection').classList.remove('hidden');
-      if(currentWrongIndex<wrongList.length) loadQuestion(wrongList[currentWrongIndex]);
+      if (currentWrongIndex < wrongList.length) loadQuestion(wrongList[currentWrongIndex]);
       else location.reload();
     }
 
-    // OX 퀴즈
-    document.getElementById('menuQuiz').onclick=()=>{
+    // 5) 틀린 문제 O/X 퀴즈
+    document.getElementById('menuQuiz').onclick = () => {
       hideAll(); clearMsgs(); resetReviewUI();
       document.getElementById('quizSection').classList.remove('hidden');
       fetch(`/api/review?exam=${encodeURIComponent(currentExam)}&id=${encodeURIComponent(currentId)}`)
-        .then(r=>r.json()).then(d=>{
-          wrongList=d.wrongList.map(x=>x.question);
-          currentWrongIndex=0; currentSentenceIndex=0;
+        .then(r=>r.json()).then(d => {
+          wrongList = d.wrongList.map(x => x.question);
+          currentWrongIndex = 0; currentSentenceIndex = 0;
           loadQuizSentences(wrongList[0]);
-        }).catch(()=>alert('OX 퀴즈 로드 오류'));
+        })
+        .catch(() => alert('OX 퀴즈 로드 오류'));
     };
-    function loadQuizSentences(qno){
+
+    function loadQuizSentences(qno) {
       fetch(`/api/quiz_sentences?exam=${encodeURIComponent(currentExam)}&question=${qno}`)
-        .then(r=>r.json()).then(d=>{
-          quizSentences=d.sentences;
-          currentSentenceIndex=0;
+        .then(res => {
+          if (!res.ok) throw new Error('OX 데이터 파일을 찾을 수 없습니다.');
+          return res.json();
+        })
+        .then(d => {
+          if (d.error) throw new Error(d.error);
+          quizSentences = d.sentences;
+          currentSentenceIndex = 0;
           showQuizSentence();
+        })
+        .catch(err => {
+          const fb = document.getElementById('quizFeedback');
+          fb.textContent = err.message; fb.style.color = '#dc3545';
+          document.getElementById('quizFeedbackSection').classList.remove('hidden');
         });
     }
-    function showQuizSentence(){
+
+    function showQuizSentence() {
       clearMsgs(); resetReviewUI();
-      const sec=document.getElementById('quizSentenceSection');
-      const q=quizSentences[currentSentenceIndex];
-      document.getElementById('quizSentence').textContent=q.text;
-      sec.classList.remove('hidden');
-      document.getElementById('oxTrueBtn').onclick=()=>handleQuizAnswer(true);
-      document.getElementById('oxFalseBtn').onclick=()=>handleQuizAnswer(false);
+      const qno = wrongList[currentWrongIndex];
+      const orig = document.getElementById('originalQuestion');
+      orig.textContent = `원본 문제 : ${qno}번`;
+      orig.classList.remove('hidden');
+      const q = quizSentences[currentSentenceIndex];
+      document.getElementById('quizSentence').textContent = q.text;
+      document.getElementById('quizSentenceSection').classList.remove('hidden');
+      document.getElementById('oxTrueBtn').onclick = () => handleQuizAnswer(true);
+      document.getElementById('oxFalseBtn').onclick = () => handleQuizAnswer(false);
     }
-    function handleQuizAnswer(ans){
-      const correct=quizSentences[currentSentenceIndex].correct;
-      const fb=document.getElementById('quizFeedback');
-      fb.textContent=ans===correct?'정답입니다!':'오답입니다.';
-      fb.style.color=ans===correct?'#007bff':'#dc3545';
+
+    function handleQuizAnswer(ans) {
+      const correct = quizSentences[currentSentenceIndex].correct;
+      const fb = document.getElementById('quizFeedback');
+      fb.textContent = ans === correct ? '정답입니다!' : '오답입니다.';
+      fb.style.color = ans === correct ? '#007bff' : '#dc3545';
       document.getElementById('quizSentenceSection').classList.add('hidden');
       document.getElementById('quizFeedbackSection').classList.remove('hidden');
-      const nextSent=document.getElementById('quizNextSentenceButton');
-      if(currentSentenceIndex<quizSentences.length-1){
-        nextSent.classList.remove('hidden');
-        nextSent.onclick=()=>{
-          currentSentenceIndex++;
-          showQuizSentence();
-        };
+      const nextSent = document.getElementById('quizNextSentenceButton');
+      if (currentSentenceIndex < quizSentences.length - 1) {
+        nextSent.classList.remove('hidden'); nextSent.onclick = () => { currentSentenceIndex++; showQuizSentence(); };
       } else nextSent.classList.add('hidden');
-      const nextQ=document.getElementById('quizNextQuestionButton');
-      nextQ.classList.remove('hidden');
-      nextQ.onclick=()=>{
-        currentWrongIndex++;
-        if(currentWrongIndex<wrongList.length) loadQuizSentences(wrongList[currentWrongIndex]);
-        else location.reload();
-      };
-      const rev=document.getElementById('quizReviewOriginalButton');
-      rev.classList.remove('hidden');
-      rev.onclick=()=>{
-        hideAll(); clearMsgs(); resetReviewUI();
-        document.getElementById('reviewSection').classList.remove('hidden');
-        loadQuestion(wrongList[currentWrongIndex]);
-      };
+      const nextQ = document.getElementById('quizNextQuestionButton');
+      nextQ.classList.remove('hidden'); nextQ.onclick = () => { currentWrongIndex++; if(currentWrongIndex<wrongList.length) loadQuizSentences(wrongList[currentWrongIndex]); else location.reload(); };
+      const rev = document.getElementById('quizReviewOriginalButton');
+      rev.classList.remove('hidden'); rev.onclick = () => { hideAll(); clearMsgs(); resetReviewUI(); document.getElementById('reviewSection').classList.remove('hidden'); loadQuestion(wrongList[currentWrongIndex]); };
     }
 
     // 홈 버튼
-    document.getElementById('homeButton').onclick=()=>{
+    document.getElementById('homeButton').onclick = () => {
       hideAll(); clearMsgs(); resetReviewUI();
       document.getElementById('menuSection').classList.remove('hidden');
       document.getElementById('homeButton').classList.remove('hidden');
