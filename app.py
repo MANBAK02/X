@@ -1,3 +1,5 @@
+# app.py
+
 import os
 import csv
 import pandas as pd
@@ -22,8 +24,7 @@ if STUDENT_LIST_CSV.exists():
         reader = csv.reader(f)
         next(reader, None)
         for row in reader:
-            if row:
-                valid_ids.add(row[0].strip())
+            valid_ids.add(row[0].strip())
 
 # 2) 회차별 응시자 ID 집합 생성
 exam_ids = {}
@@ -127,9 +128,8 @@ def api_submit_review():
     question = int(request.args.get('question','').strip())
     answer   = request.args.get('answer','').strip()
 
-    ans_path = DATA_DIR / exam / 'answer' / 'A.csv'
-    raw      = pd.read_csv(ans_path, header=None, dtype=str)
-    correct  = raw.iat[question, 2].strip()
+    raw     = pd.read_csv(DATA_DIR / exam / 'answer' / 'A.csv', header=None, dtype=str)
+    correct = raw.iat[question, 2].strip()
     return jsonify(correct=(answer == correct))
 
 # ── 디버그: problem_images 폴더 파일 목록 ──
@@ -164,10 +164,11 @@ def serve_report(exam, subpath):
 @app.route('/', defaults={'path':''})
 @app.route('/<path:path>')
 def serve_frontend(path):
-    target = FRONTEND_DIR / path
-    if path and target.exists():
+    t = FRONTEND_DIR / path
+    if path and t.exists():
         return send_from_directory(str(FRONTEND_DIR), path)
     return send_from_directory(str(FRONTEND_DIR), 'index.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT',5000)), debug=True)
+
