@@ -1,4 +1,21 @@
 # app.py
+# app.py 맨 위 import 직후에 추가
+from flask import current_app as app
+
+# 디버그: data/ 하위 폴더 + student_answer/*.csv 현황 반환
+@app.route('/api/debug_exams')
+def debug_exams():
+    result = {}
+    for d in (DATA_DIR).iterdir():
+        if d.is_dir():
+            student_dir = d / 'student_answer'
+            result[d.name] = {
+                'student_answer_exists': student_dir.is_dir(),
+                'csv_count': len(list(student_dir.glob('*.csv'))) if student_dir.exists() else 0,
+                'csv_files': [f.name for f in student_dir.glob('*.csv')] if student_dir.exists() else []
+            }
+    return jsonify(result)
+
 import os
 import csv
 import pandas as pd
