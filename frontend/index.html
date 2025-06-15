@@ -1,26 +1,75 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="utf-8">
   <!-- 모바일 퍼스트 뷰포트 -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GAIA 모의고사 복습 사이트</title>
-
-  <!-- Pretendard 폰트 추가 -->
+  <!-- Pretendard 폰트 -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.8/dist/web/static/pretendard.css" />
-
+  <title>GAIA 모의고사 복습 사이트</title>
   <style>
     /* ── 공통 레이아웃 ── */
-    body { margin:0; padding:1rem; font-family:'Pretendard', sans-serif; background:#f9f9f9; }
-    .container { max-width:400px; margin:0 auto; background:white; padding:1rem; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
-    h1 { margin:0 0 .5rem; font-size:1.5rem; text-align:center; }
-    .top-gif { display:block; width:100%; max-width:200px; height:auto; margin:0 auto 1rem; }
-    .home-button { display:flex; align-items:center; cursor:pointer; margin-bottom:1rem; color:#007bff; }
-    .home-button img { width:16px; height:16px; margin-right:.25rem; }
-    input, select, button { display:block; width:100%; padding:.75rem; font-size:1rem; margin:.5rem 0; box-sizing:border-box; border:1px solid #ccc; border-radius:4px; }
-    button { border:none; }
-    p.error { color:#d00; font-size:.9rem; text-align:center; margin:.25rem 0 0; }
+    body {
+      margin:0;
+      padding:1rem;
+      font-family:'Pretendard', sans-serif;
+      font-weight:400;
+      background:#f9f9f9;
+    }
+    .container {
+      max-width:400px;
+      margin:0 auto;
+      background:white;
+      padding:1rem;
+      border-radius:8px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin:0 0 .5rem;
+      font-size:1.5rem;
+      text-align:center;
+    }
+    .top-gif {
+      display:block;
+      width:100%;
+      max-width:200px;
+      height:auto;
+      margin:0 auto 1rem;
+    }
+    .home-button {
+      display:flex;
+      align-items:center;
+      cursor:pointer;
+      margin-bottom:1rem;
+      color:#007bff;
+    }
+    .home-button img {
+      width:16px;
+      height:16px;
+      margin-right:.25rem;
+    }
+    input, select, button {
+      display:block;
+      width:100%;
+      padding:.75rem;
+      font-size:1rem;
+      margin:.5rem 0;
+      box-sizing:border-box;
+      border:1px solid #ccc;
+      border-radius:4px;
+    }
+    button {
+      font-family:'Pretendard',sans-serif;
+      border:none;
+      background:#007bff;
+      color:white;
+    }
+    p.error {
+      color:#d00;
+      font-size:.9rem;
+      text-align:center;
+      margin:.25rem 0 0;
+    }
 
     /* ── 메뉴 버튼 (1번 제거) ── */
     .menu-button {
@@ -32,52 +81,74 @@
       cursor:pointer;
       font-family:'Pretendard',sans-serif;
     }
-    /* 2번, 3번 색상 지정 */
-    #menuReview { background-color:#47B5FF; color:white; }
-    #menuQuiz   { background-color:#DFF6FF; color:#1363DF; border:1px solid #1363DF; }
+    #menuReview {
+      background-color:#47B5FF;
+      color:white;
+    }
+    #menuQuiz {
+      background-color:#DFF6FF;
+      color:#1363DF;
+      border:1px solid #1363DF;
+    }
 
-    /* ── 숨김 유틸 ── */
     .hidden { display:none !important; }
 
     /* ── 틀린 문제 다시 풀어보기 스타일 ── */
-    #questionImage { width:100%; height:auto; margin:1rem 0; border:1px solid #ccc; border-radius:4px; }
+    #questionImage {
+      width:100%; height:auto; margin:1rem 0;
+      border:1px solid #ccc; border-radius:4px;
+    }
     #choiceButtons { text-align:center; }
     #choiceButtons button {
-      display:inline-block; width:18%; margin:1%; padding:.75rem 0;
-      font-size:1.5rem;
+      display:inline-block; width:18%; margin:1%;
+      padding:.75rem 0; font-size:1.5rem;
       border:1px solid #007bff; border-radius:4px;
       background:white; color:#007bff; cursor:pointer;
     }
     #submitButton, #toQuizButton, #skipButton {
-      display:block; width:100%; margin:1rem 0; padding:.75rem; font-size:1rem;
-      background:#007bff; color:white; border:none; border-radius:4px; cursor:pointer;
-    }
-    #toQuizButton { background:#17a2b8; }
-    #skipButton   { background:#6c757d; }
-    #feedback { text-align:center; font-size:1.1rem; margin-top:1rem; }
-    #retryButton, #explainButton, #nextButton {
-      display:block; width:100%; padding:.75rem; margin:.5rem 0; font-size:1rem;
+      display:block; width:100%; margin:1rem 0;
+      padding:.75rem; font-size:1rem;
       border:none; border-radius:4px; cursor:pointer;
     }
-    #retryButton   { background:#007bff; color:white; }
+    #submitButton { background:#007bff; color:white; }
+    #toQuizButton { background:#17a2b8; color:white; }
+    #skipButton { background:#6c757d; color:white; }
+    #feedback {
+      text-align:center; font-size:1.1rem; margin-top:1rem;
+    }
+    #retryButton, #explainButton, #nextButton {
+      display:block; width:100%; padding:.75rem;
+      margin:.5rem 0; font-size:1rem;
+      border:none; border-radius:4px; cursor:pointer;
+    }
+    #retryButton { background:#007bff; color:white; }
     #explainButton { background:#17a2b8; color:white; }
-    #nextButton    { background:#28a745; color:white; }
-    #explanationImage { width:100%; height:auto; margin:1rem 0; border:1px solid #ccc; border-radius:4px; }
+    #nextButton { background:#28a745; color:white; }
+    #explanationImage {
+      width:100%; height:auto; margin:1rem 0;
+      border:1px solid #ccc; border-radius:4px;
+    }
 
     /* ── OX 퀴즈 스타일 ── */
-    #originalQuestion { text-align:center; color:red; font-size:1rem; margin-top:1rem; }
+    #originalQuestion {
+      text-align:center; color:red; font-size:1rem;
+      margin-top:1rem;
+    }
     #quizSentenceSection, #quizFeedbackSection { padding:1rem 0; }
     #quizSentence { font-size:1rem; margin:1rem 0; }
     #oxButtons { text-align:center; }
     #oxButtons button {
-      display:inline-block; width:40%; margin:1%; padding:.75rem 0;
-      font-size:1.5rem;
+      display:inline-block; width:40%; margin:1%;
+      padding:.75rem 0; font-size:1.5rem;
       border:1px solid #007bff; border-radius:4px;
       background:white; color:#007bff; cursor:pointer;
     }
-    #quizFeedback { text-align:center; font-size:1.1rem; margin:1rem 0; }
+    #quizFeedback {
+      text-align:center; font-size:1.1rem; margin:1rem 0;
+    }
     #quizOptions button {
-      display:block; width:100%; padding:.75rem; margin:.5rem 0; font-size:1rem;
+      display:block; width:100%; padding:.75rem;
+      margin:.5rem 0; font-size:1rem;
       border:none; border-radius:4px; cursor:pointer;
     }
     #quizNextSentenceButton { background:#ffc107; color:white; }
@@ -100,7 +171,6 @@
       <button id="loginBtn">로그인</button>
       <p id="loginMsg" class="error"></p>
     </div>
-
     <!-- ② 회차 선택 -->
     <div id="examSection" class="hidden">
       <h1>GAIA 모의고사 복습 사이트</h1>
@@ -109,7 +179,7 @@
       <p id="examMsg" class="error"></p>
     </div>
 
-    <!-- ③ 메뉴 (1번 성적표 확인 제거됨) -->
+    <!-- ③ 메뉴 -->
     <div id="menuSection" class="hidden">
       <h1>GAIA 모의고사 복습 사이트</h1>
       <button id="menuReview" class="menu-button">2. 틀린 문제 다시 풀어보기</button>
@@ -117,7 +187,7 @@
       <p id="menuMsg" class="error"></p>
     </div>
 
-    <!-- ④ 성적표 (이제 호출 안 됨) -->
+    <!-- ④ 성적표 (버튼 제거로 호출 안 됨) -->
     <div id="reportSection" class="hidden">
       <h1>내 성적표</h1>
       <img id="reportImage" class="report-img" alt="성적표 이미지">
@@ -143,7 +213,6 @@
         <button id="nextButton" class="hidden">다음 문제</button>
       </div>
     </div>
-
     <!-- ⑥ 틀린 문제 O/X 퀴즈 -->
     <div id="quizSection" class="hidden">
       <h1>틀린 문제 O/X 퀴즈</h1>
@@ -249,7 +318,6 @@
           document.getElementById('reviewMsg').textContent = '불러오기 오류';
         });
     };
-
     function loadQuestion(qno) {
       clearMsgs(); resetReviewUI();
       const qi = document.getElementById('questionImage');
@@ -286,7 +354,7 @@
       }
       clearMsgs();
       fetch(`/api/submit_review?exam=${encodeURIComponent(currentExam)}&question=${qno}&answer=${selectedAnswer}`)
-        .then(r=>r.json())
+        .then(r => r.json())
         .then(d => {
           document.getElementById('reviewQuestionSection').classList.add('hidden');
           const fb = document.getElementById('feedback');
@@ -336,7 +404,10 @@
           currentSentenceIndex = 0;
           loadQuizSentences(wrongList[0]);
         })
-        .catch(() => alert('OX 퀴즈 로드 오류'));
+        .catch(() => {
+          document.getElementById('menuMsg').textContent = 'OX 퀴즈 로드 오류';
+          document.getElementById('menuMsg').style.color = '#d00';
+        });
     };
 
     function loadQuizSentences(qno) {
@@ -352,7 +423,8 @@
         })
         .catch(err => {
           const fb = document.getElementById('quizFeedback');
-          fb.textContent = err.message; fb.style.color = '#dc3545';
+          fb.textContent = err.message;
+          fb.style.color = '#dc3545';
           document.getElementById('quizFeedbackSection').classList.remove('hidden');
         });
     }
@@ -377,7 +449,6 @@
       fb.style.color = ans === correct ? '#007bff' : '#dc3545';
       document.getElementById('quizSentenceSection').classList.add('hidden');
       document.getElementById('quizFeedbackSection').classList.remove('hidden');
-
       document.getElementById('quizNextSentenceButton').classList.remove('hidden');
       document.getElementById('quizNextSentenceButton').onclick = () => {
         if (currentSentenceIndex < quizSentences.length - 1) {
@@ -385,7 +456,6 @@
           showQuizSentence();
         }
       };
-
       document.getElementById('quizNextQuestionButton').classList.remove('hidden');
       document.getElementById('quizNextQuestionButton').onclick = () => {
         currentWrongIndex++;
@@ -395,7 +465,6 @@
           location.reload();
         }
       };
-
       document.getElementById('quizReviewOriginalButton').classList.remove('hidden');
       document.getElementById('quizReviewOriginalButton').onclick = () => {
         hideAll(); clearMsgs(); resetReviewUI();
@@ -410,7 +479,7 @@
       document.getElementById('menuSection').classList.remove('hidden');
       document.getElementById('homeButton').classList.remove('hidden');
     };
+
   </script>
 </body>
 </html>
-
